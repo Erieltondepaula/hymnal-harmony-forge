@@ -4,21 +4,21 @@ import { z } from "zod";
 
 const BlockSchema = z.object({
   type: z.string().describe("Nome da seção em MAIÚSCULAS: INTRODUÇÃO, PARTE 1, PARTE 2, REFRÃO, PONTE, SOLO, FINAL, etc."),
-  chords: z.array(z.string()).describe("Sequência de acordes na ordem tocada, ex.: ['Am','F','C','G']"),
-  repeat: z.string().optional().describe("Número de vezes, ex.: '2X', '3X'. Omita se for 1x."),
-  lyric: z.string().optional().describe("Primeira linha (ou trecho curto) da letra desta seção, para identificação."),
-  note: z.string().optional().describe("Observação opcional (ex.: 'volta para parte 1')."),
+  chords: z.array(z.string()).describe("Sequência de acordes na ordem tocada"),
+  repeat: z.string().nullable().describe("Número de vezes, ex.: '2X', '3X'. null se for 1x."),
+  lyric: z.string().nullable().describe("Primeira linha da letra desta seção."),
+  note: z.string().nullable().describe("Observação opcional."),
 });
 
 const SongSchema = z.object({
   title: z.string(),
-  artist: z.string().default(""),
+  artist: z.string(),
   originalKey: z.string().describe("Tom original detectado, ex.: 'Am', 'C', 'G#m'"),
-  bpm: z.number().int().min(40).max(240).describe("BPM estimado"),
-  bpmEstimated: z.boolean().default(true),
-  time: z.string().default("4/4"),
+  bpm: z.number().describe("BPM estimado, entre 40 e 240"),
+  bpmEstimated: z.boolean(),
+  time: z.string().describe("Compasso, ex.: '4/4'"),
   rhythm: z.string().describe("Estilo/ritmo: Adoração, Pop Rock, Balada, etc."),
-  blocks: z.array(BlockSchema).min(1),
+  blocks: z.array(BlockSchema),
 });
 
 const ParseInput = z.object({
