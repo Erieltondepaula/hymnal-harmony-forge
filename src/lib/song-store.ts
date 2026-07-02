@@ -163,6 +163,26 @@ export const useSongStore = create<State>()(
         set((s) => ({ songs: [song, ...s.songs] }));
         return id;
       },
+      createFromParsed: (data) => {
+        const id = uid();
+        const now = Date.now();
+        const song: Song = {
+          id,
+          title: data.title || "Nova Música",
+          artist: data.artist ?? "",
+          originalKey: data.originalKey,
+          key: data.originalKey,
+          bpm: data.bpm,
+          bpmEstimated: data.bpmEstimated ?? true,
+          time: data.time ?? "4/4",
+          rhythm: data.rhythm ?? "Pop Rock",
+          createdAt: now,
+          updatedAt: now,
+          blocks: data.blocks.map((b) => ({ ...b, id: uid() })),
+        };
+        set((s) => ({ songs: [song, ...s.songs] }));
+        return id;
+      },
       update: (id, patch) =>
         set((state) => {
           pushHistory(state, id);
