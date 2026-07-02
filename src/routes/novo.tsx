@@ -167,6 +167,46 @@ function NewMap() {
             </div>
           </div>
 
+          {/* Import from URL (Cifra Club) */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="mb-3 flex items-center gap-2 text-[14px] font-semibold">
+              <Link2 className="h-4 w-4 text-primary" />
+              Importar do Cifra Club
+            </div>
+            <label className="mb-1 block text-[12px] font-medium text-muted-foreground">
+              Link da música
+            </label>
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !fetchingUrl) importFromUrl();
+              }}
+              placeholder="https://www.cifraclub.com.br/..."
+              className="w-full rounded-lg border border-input bg-background p-2.5 text-[13px] outline-none placeholder:text-muted-foreground/60 focus:border-primary"
+            />
+            <button
+              onClick={importFromUrl}
+              disabled={fetchingUrl || !url.trim()}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2.5 text-[14px] font-semibold text-primary transition-all hover:bg-primary/20 disabled:opacity-40"
+            >
+              {fetchingUrl ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Buscando cifra...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Importar do link
+                </>
+              )}
+            </button>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              A cifra será baixada automaticamente. Depois clique em "Gerar mapa com IA".
+            </p>
+          </div>
+
           <div
             onDragOver={(e) => {
               e.preventDefault();
