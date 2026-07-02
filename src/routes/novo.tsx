@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { UploadCloud, FileText, Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import { UploadCloud, FileText, Loader2, CheckCircle2, Sparkles, Link2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useSongStore } from "@/lib/song-store";
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { parseCifra } from "@/lib/ai.functions";
+import { fetchCifraFromUrl } from "@/lib/fetch-cifra.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/novo")({
@@ -28,11 +29,41 @@ function NewMap() {
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
+  const [url, setUrl] = useState("");
+  const [fetchingUrl, setFetchingUrl] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const createFromParsed = useSongStore((s) => s.createFromParsed);
   const navigate = useNavigate();
   const previewSong = useSongStore((s) => s.songs[0]);
   const runParse = useServerFn(parseCifra);
+  const runFetchUrl = useServerFn(fetchCifraFromUrl);
+
+  const importFromUrl = async () => {
+    const value = url.trim();
+    if (!value) {
+      toast.error("Cole o link da música do Cifra Club.");
+      return;
+    }
+    try {
+      new URL(value);
+    } catch {
+      toast.error("Link inválido.");
+      return;
+    }
+    setFetchingUrl(true);
+    try {
+      const result = await runFetchUrl({ data: { url: value } });
+      setText(result.text);
+      if (!title.trim() && result.title) setTitle(result.title);
+      if (!artist.trim() && result.artist) setArtist(result.artist);
+      toast.success("Cifra importada! Clique em \"Gerar mapa\" para analisar.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao importar link";
+      toast.error(msg);
+    } finally {
+      setFetchingUrl(false);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -134,6 +165,46 @@ function NewMap() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Import from URL (Cifra Club) */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="mb-3 flex items-center gap-2 text-[14px] font-semibold">
+              <Link2 className="h-4 w-4 text-primary" />
+              Importar do Cifra Club
+            </div>
+            <label className="mb-1 block text-[12px] font-medium text-muted-foreground">
+              Link da música
+            </label>
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !fetchingUrl) importFromUrl();
+              }}
+              placeholder="https://www.cifraclub.com.br/..."
+              className="w-full rounded-lg border border-input bg-background p-2.5 text-[13px] outline-none placeholder:text-muted-foreground/60 focus:border-primary"
+            />
+            <button
+              onClick={importFromUrl}
+              disabled={fetchingUrl || !url.trim()}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2.5 text-[14px] font-semibold text-primary transition-all hover:bg-primary/20 disabled:opacity-40"
+            >
+              {fetchingUrl ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Buscando cifra...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Importar do link
+                </>
+              )}
+            </button>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              A cifra será baixada automaticamente. Depois clique em "Gerar mapa com IA".
+            </p>
           </div>
 
           <div
