@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as NovoRouteImport } from './routes/novo'
+import { Route as ImportarRouteImport } from './routes/importar'
 import { Route as BibliotecaRouteImport } from './routes/biblioteca'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EditorIdRouteImport } from './routes/editor.$id'
@@ -17,6 +18,11 @@ import { Route as EditorIdRouteImport } from './routes/editor.$id'
 const NovoRoute = NovoRouteImport.update({
   id: '/novo',
   path: '/novo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportarRoute = ImportarRouteImport.update({
+  id: '/importar',
+  path: '/importar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BibliotecaRoute = BibliotecaRouteImport.update({
@@ -38,12 +44,14 @@ const EditorIdRoute = EditorIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/biblioteca': typeof BibliotecaRoute
+  '/importar': typeof ImportarRoute
   '/novo': typeof NovoRoute
   '/editor/$id': typeof EditorIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/biblioteca': typeof BibliotecaRoute
+  '/importar': typeof ImportarRoute
   '/novo': typeof NovoRoute
   '/editor/$id': typeof EditorIdRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/biblioteca': typeof BibliotecaRoute
+  '/importar': typeof ImportarRoute
   '/novo': typeof NovoRoute
   '/editor/$id': typeof EditorIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/biblioteca' | '/novo' | '/editor/$id'
+  fullPaths: '/' | '/biblioteca' | '/importar' | '/novo' | '/editor/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/biblioteca' | '/novo' | '/editor/$id'
-  id: '__root__' | '/' | '/biblioteca' | '/novo' | '/editor/$id'
+  to: '/' | '/biblioteca' | '/importar' | '/novo' | '/editor/$id'
+  id: '__root__' | '/' | '/biblioteca' | '/importar' | '/novo' | '/editor/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BibliotecaRoute: typeof BibliotecaRoute
+  ImportarRoute: typeof ImportarRoute
   NovoRoute: typeof NovoRoute
   EditorIdRoute: typeof EditorIdRoute
 }
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/novo'
       fullPath: '/novo'
       preLoaderRoute: typeof NovoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/importar': {
+      id: '/importar'
+      path: '/importar'
+      fullPath: '/importar'
+      preLoaderRoute: typeof ImportarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/biblioteca': {
@@ -105,6 +122,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BibliotecaRoute: BibliotecaRoute,
+  ImportarRoute: ImportarRoute,
   NovoRoute: NovoRoute,
   EditorIdRoute: EditorIdRoute,
 }
