@@ -29,11 +29,41 @@ function NewMap() {
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
+  const [url, setUrl] = useState("");
+  const [fetchingUrl, setFetchingUrl] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const createFromParsed = useSongStore((s) => s.createFromParsed);
   const navigate = useNavigate();
   const previewSong = useSongStore((s) => s.songs[0]);
   const runParse = useServerFn(parseCifra);
+  const runFetchUrl = useServerFn(fetchCifraFromUrl);
+
+  const importFromUrl = async () => {
+    const value = url.trim();
+    if (!value) {
+      toast.error("Cole o link da música do Cifra Club.");
+      return;
+    }
+    try {
+      new URL(value);
+    } catch {
+      toast.error("Link inválido.");
+      return;
+    }
+    setFetchingUrl(true);
+    try {
+      const result = await runFetchUrl({ data: { url: value } });
+      setText(result.text);
+      if (!title.trim() && result.title) setTitle(result.title);
+      if (!artist.trim() && result.artist) setArtist(result.artist);
+      toast.success("Cifra importada! Clique em \"Gerar mapa\" para analisar.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao importar link";
+      toast.error(msg);
+    } finally {
+      setFetchingUrl(false);
+    }
+  };
 
   useEffect(() => {
     return () => {
