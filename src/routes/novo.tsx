@@ -152,39 +152,7 @@ function NewMap() {
       toast.error("Cole uma cifra para gerar o mapa.");
       return;
     }
-    setProcessing(true);
-    startStageAnimation();
-    try {
-      const parsed = await runParse({
-        data: { text: text.trim(), titleHint: title || undefined, artistHint: artist || undefined },
-      });
-      stopStageAnimation();
-      setStage(stages.length);
-      const finalTitle = title.trim() || parsed.title || "Nova Música";
-      const id = createFromParsed({
-        title: finalTitle,
-        artist: artist.trim() || parsed.artist,
-        originalKey: parsed.originalKey,
-        bpm: parsed.bpm,
-        bpmEstimated: parsed.bpmEstimated,
-        time: parsed.time,
-        rhythm: parsed.rhythm,
-        blocks: parsed.blocks.map((b) => ({
-          type: b.type,
-          chords: b.chords,
-          repeat: b.repeat ?? undefined,
-          lyric: b.lyric ?? undefined,
-          note: b.note ?? undefined,
-        })),
-      });
-      toast.success("Mapa gerado com sucesso!");
-      setTimeout(() => navigate({ to: "/editor/$id", params: { id } }), 300);
-    } catch (err) {
-      stopStageAnimation();
-      setProcessing(false);
-      const msg = err instanceof Error ? err.message : "Erro ao processar cifra";
-      toast.error(msg);
-    }
+    await runProcessWith({ text, titleHint: title, artistHint: artist });
   };
 
   return (
