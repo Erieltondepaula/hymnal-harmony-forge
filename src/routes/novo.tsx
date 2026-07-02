@@ -1,8 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { UploadCloud, FileText, Link2, Loader2, CheckCircle2 } from "lucide-react";
+import { UploadCloud, FileText, Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { useSongStore } from "@/lib/song-store";
 import { SongMapRenderer } from "@/components/SongMapRenderer";
+import { parseCifra } from "@/lib/ai.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/novo")({
@@ -23,10 +26,13 @@ function NewMap() {
   const [processing, setProcessing] = useState(false);
   const [stage, setStage] = useState(0);
   const [text, setText] = useState("");
+  const [title, setTitle] = useState("");
+  const [artist, setArtist] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const createFromSeed = useSongStore((s) => s.createFromSeed);
+  const createFromParsed = useSongStore((s) => s.createFromParsed);
   const navigate = useNavigate();
   const previewSong = useSongStore((s) => s.songs[0]);
+  const runParse = useServerFn(parseCifra);
 
   useEffect(() => {
     return () => {
@@ -34,23 +40,56 @@ function NewMap() {
     };
   }, []);
 
-  const runProcess = () => {
-    setProcessing(true);
+  const startStageAnimation = () => {
     setStage(0);
     let i = 0;
     timerRef.current = setInterval(() => {
       i += 1;
-      if (i >= stages.length) {
+      if (i >= stages.length - 1) {
         if (timerRef.current) clearInterval(timerRef.current);
-        setStage(stages.length);
-        setTimeout(() => {
-          const id = createFromSeed();
-          navigate({ to: "/editor/$id", params: { id } });
-        }, 400);
+        setStage(stages.length - 1);
         return;
       }
       setStage(i);
-    }, 600);
+    }, 700);
+  };
+
+  const stopStageAnimation = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const runProcess = async () => {
+    if (!text.trim()) {
+      toast.error("Cole uma cifra para gerar o mapa.");
+      return;
+    }
+    setProcessing(true);
+    startStageAnimation();
+    try {
+      const parsed = await runParse({
+        data: { text: text.trim(), titleHint: title || undefined, artistHint: artist || undefined },
+      });
+      stopStageAnimation();
+      setStage(stages.length);
+      const finalTitle = title.trim() || parsed.title || "Nova Música";
+      const id = createFromParsed({
+        title: finalTitle,
+        artist: artist.trim() || parsed.artist,
+        originalKey: parsed.originalKey,
+        bpm: parsed.bpm,
+        bpmEstimated: parsed.bpmEstimated,
+        time: parsed.time,
+        rhythm: parsed.rhythm,
+        blocks: parsed.blocks,
+      });
+      toast.success("Mapa gerado com sucesso!");
+      setTimeout(() => navigate({ to: "/editor/$id", params: { id } }), 300);
+    } catch (err) {
+      stopStageAnimation();
+      setProcessing(false);
+      const msg = err instanceof Error ? err.message : "Erro ao processar cifra";
+      toast.error(msg);
+    }
   };
 
   return (
@@ -58,81 +97,112 @@ function NewMap() {
       <header className="space-y-1">
         <h1 className="h-song">Novo Mapa</h1>
         <p className="text-[15px] text-muted-foreground">
-          Envie uma cifra, cole o texto ou arraste um PDF — nós montamos o mapa.
+          Envie uma cifra, cole o texto ou arraste um PDF — a IA monta o mapa.
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         {/* Import column */}
         <div className="space-y-4">
+          {/* Song identification */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="mb-3 flex items-center gap-2 text-[14px] font-semibold">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Identificação da música
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-[12px] font-medium text-muted-foreground">
+                  Nome da música <span className="text-primary">*</span>
+                </label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Ex.: Teu Amor Não Falha"
+                  className="w-full rounded-lg border border-input bg-background p-2.5 text-[14px] outline-none placeholder:text-muted-foreground/60 focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[12px] font-medium text-muted-foreground">
+                  Artista / Ministério
+                </label>
+                <input
+                  value={artist}
+                  onChange={(e) => setArtist(e.target.value)}
+                  placeholder="Ex.: Fernandinho"
+                  className="w-full rounded-lg border border-input bg-background p-2.5 text-[14px] outline-none placeholder:text-muted-foreground/60 focus:border-primary"
+                />
+              </div>
+            </div>
+          </div>
+
           <div
             onDragOver={(e) => {
               e.preventDefault();
               setDragOver(true);
             }}
             onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
+            onDrop={async (e) => {
               e.preventDefault();
               setDragOver(false);
-              runProcess();
+              const file = e.dataTransfer.files?.[0];
+              if (file && file.type.startsWith("text/")) {
+                const content = await file.text();
+                setText(content);
+                toast.success(`Arquivo carregado: ${file.name}`);
+              } else if (file) {
+                toast.info("Para PDF/imagem, cole o texto da cifra abaixo.");
+              }
             }}
             className={cn(
-              "flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 text-center transition-colors",
+              "flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors",
               dragOver ? "border-primary bg-primary/5" : "border-border bg-card",
             )}
             style={{ transitionDuration: "180ms" }}
           >
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/30">
-              <UploadCloud className="h-7 w-7" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/30">
+              <UploadCloud className="h-6 w-6" />
             </div>
-            <div className="mt-4 text-[18px] font-semibold">Arraste a cifra aqui</div>
-            <div className="mt-1 text-[14px] text-muted-foreground">
-              PDF, DOCX, TXT, PNG, JPG · ou cole com Ctrl + V
+            <div className="mt-3 text-[15px] font-semibold">Arraste um arquivo .txt</div>
+            <div className="mt-1 text-[13px] text-muted-foreground">
+              Ou cole o texto da cifra no campo abaixo
             </div>
-            <button
-              onClick={runProcess}
-              className="mt-5 rounded-xl bg-primary px-5 py-2.5 text-[14px] font-semibold text-primary-foreground transition-all hover:brightness-110"
-              style={{ transitionDuration: "180ms" }}
-            >
-              Selecionar arquivo
-            </button>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="mb-3 flex items-center gap-2 text-[14px] font-semibold">
               <FileText className="h-4 w-4 text-muted-foreground" />
-              Colar cifra em texto
+              Cifra
             </div>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={"Am F C G\nNada vai me separar..."}
-              rows={6}
+              placeholder={"Am           F           C           G\nNada vai me separar do Teu amor\n..."}
+              rows={10}
               className="w-full resize-none rounded-lg border border-input bg-background p-3 font-mono text-[13px] outline-none placeholder:text-muted-foreground/60 focus:border-primary"
             />
             <button
               onClick={runProcess}
               disabled={!text.trim() || processing}
-              className="mt-3 rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:opacity-40"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[14px] font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:opacity-40"
             >
-              Gerar mapa
+              {processing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Gerar mapa com IA
+                </>
+              )}
             </button>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="mb-3 flex items-center gap-2 text-[14px] font-semibold">
-              <Link2 className="h-4 w-4 text-muted-foreground" />
-              Link do Cifra Club
-            </div>
-            <input
-              placeholder="https://www.cifraclub.com.br/..."
-              className="w-full rounded-lg border border-input bg-background p-2.5 text-[13px] outline-none placeholder:text-muted-foreground/60 focus:border-primary"
-            />
           </div>
 
           {processing ? (
             <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="mb-4 text-[14px] font-semibold">Processando</div>
+              <div className="mb-4 text-[14px] font-semibold">Processando com IA</div>
               <ul className="space-y-2">
                 {stages.map((label, i) => (
                   <li key={label} className="flex items-center gap-2 text-[13px]">
@@ -166,7 +236,7 @@ function NewMap() {
         <div className="rounded-2xl border border-border bg-surface p-6">
           <div className="mb-4 flex items-center justify-between">
             <div className="text-[14px] font-semibold">Pré-visualização</div>
-            <div className="text-[12px] text-muted-foreground">Assim ficará o PDF</div>
+            <div className="text-[12px] text-muted-foreground">Exemplo do formato final</div>
           </div>
           <div className="max-h-[70vh] overflow-auto rounded-lg">
             {previewSong ? <SongMapRenderer song={previewSong} /> : null}

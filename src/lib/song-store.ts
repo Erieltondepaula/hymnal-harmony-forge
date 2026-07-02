@@ -87,6 +87,16 @@ type State = {
   getSong: (id: string) => Song | undefined;
   createFromSeed: () => string;
   createBlank: () => string;
+  createFromParsed: (data: {
+    title: string;
+    artist?: string;
+    originalKey: string;
+    bpm: number;
+    bpmEstimated?: boolean;
+    time?: string;
+    rhythm?: string;
+    blocks: Array<Omit<Block, "id">>;
+  }) => string;
   update: (id: string, patch: Partial<Song>) => void;
   updateBlock: (songId: string, blockId: string, patch: Partial<Block>) => void;
   reorderBlocks: (songId: string, ids: string[]) => void;
@@ -149,6 +159,26 @@ export const useSongStore = create<State>()(
             { id: uid(), type: "PARTE 1", chords: ["C", "G", "Am", "F"], lyric: "..." },
             { id: uid(), type: "REFRÃO", chords: ["F", "C", "G", "Am"], repeat: "2X", lyric: "..." },
           ],
+        };
+        set((s) => ({ songs: [song, ...s.songs] }));
+        return id;
+      },
+      createFromParsed: (data) => {
+        const id = uid();
+        const now = Date.now();
+        const song: Song = {
+          id,
+          title: data.title || "Nova Música",
+          artist: data.artist ?? "",
+          originalKey: data.originalKey,
+          key: data.originalKey,
+          bpm: data.bpm,
+          bpmEstimated: data.bpmEstimated ?? true,
+          time: data.time ?? "4/4",
+          rhythm: data.rhythm ?? "Pop Rock",
+          createdAt: now,
+          updatedAt: now,
+          blocks: data.blocks.map((b) => ({ ...b, id: uid() })),
         };
         set((s) => ({ songs: [song, ...s.songs] }));
         return id;
