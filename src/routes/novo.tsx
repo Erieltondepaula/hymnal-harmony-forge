@@ -38,6 +38,54 @@ function NewMap() {
   const runParse = useServerFn(parseCifra);
   const runFetchUrl = useServerFn(fetchCifraFromUrl);
 
+  const runProcessWith = async (opts: {
+    text: string;
+    titleHint?: string;
+    artistHint?: string;
+  }) => {
+    setProcessing(true);
+    startStageAnimation();
+    try {
+      const parsed = await runParse({
+        data: {
+          text: opts.text.trim(),
+          titleHint: opts.titleHint?.trim() || undefined,
+          artistHint: opts.artistHint?.trim() || undefined,
+        },
+      });
+      stopStageAnimation();
+      setStage(stages.length);
+      // Atualiza campos visíveis com o que a IA detectou
+      if (!title.trim() && parsed.title) setTitle(parsed.title);
+      if (!artist.trim() && parsed.artist) setArtist(parsed.artist);
+      const finalTitle = (opts.titleHint || title).trim() || parsed.title || "Nova Música";
+      const finalArtist = (opts.artistHint || artist).trim() || parsed.artist || "";
+      const id = createFromParsed({
+        title: finalTitle,
+        artist: finalArtist,
+        originalKey: parsed.originalKey,
+        bpm: parsed.bpm,
+        bpmEstimated: parsed.bpmEstimated,
+        time: parsed.time,
+        rhythm: parsed.rhythm,
+        blocks: parsed.blocks.map((b) => ({
+          type: b.type,
+          chords: b.chords,
+          repeat: b.repeat ?? undefined,
+          lyric: b.lyric ?? undefined,
+          note: b.note ?? undefined,
+        })),
+      });
+      toast.success("Mapa gerado com sucesso!");
+      setTimeout(() => navigate({ to: "/editor/$id", params: { id } }), 300);
+    } catch (err) {
+      stopStageAnimation();
+      setProcessing(false);
+      const msg = err instanceof Error ? err.message : "Erro ao processar cifra";
+      toast.error(msg);
+    }
+  };
+
   const importFromUrl = async () => {
     const value = url.trim();
     if (!value) {
@@ -54,9 +102,19 @@ function NewMap() {
     try {
       const result = await runFetchUrl({ data: { url: value } });
       setText(result.text);
+      const nextTitle = title.trim() || result.title || "";
+      const nextArtist = artist.trim() || result.artist || "";
       if (!title.trim() && result.title) setTitle(result.title);
       if (!artist.trim() && result.artist) setArtist(result.artist);
-      toast.success("Cifra importada! Clique em \"Gerar mapa\" para analisar.");
+      toast.success("Cifra importada! Analisando com IA...");
+      setFetchingUrl(false);
+      // Encadeia análise da IA automaticamente
+      await runProcessWith({
+        text: result.text,
+        titleHint: nextTitle,
+        artistHint: nextArtist,
+      });
+      return;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao importar link";
       toast.error(msg);
