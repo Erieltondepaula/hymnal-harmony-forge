@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { UploadCloud, FileText, Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import { UploadCloud, FileText, Loader2, CheckCircle2, Sparkles, Link2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useSongStore } from "@/lib/song-store";
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { parseCifra } from "@/lib/ai.functions";
+import { fetchCifraFromUrl } from "@/lib/fetch-cifra.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/novo")({
