@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as NovoRouteImport } from './routes/novo'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EditorIdRouteImport } from './routes/editor.$id'
 
 const NovoRoute = NovoRouteImport.update({
   id: '/novo',
@@ -22,31 +23,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EditorIdRoute = EditorIdRouteImport.update({
+  id: '/editor/$id',
+  path: '/editor/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/novo': typeof NovoRoute
+  '/editor/$id': typeof EditorIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/novo': typeof NovoRoute
+  '/editor/$id': typeof EditorIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/novo': typeof NovoRoute
+  '/editor/$id': typeof EditorIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/novo'
+  fullPaths: '/' | '/novo' | '/editor/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/novo'
-  id: '__root__' | '/' | '/novo'
+  to: '/' | '/novo' | '/editor/$id'
+  id: '__root__' | '/' | '/novo' | '/editor/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NovoRoute: typeof NovoRoute
+  EditorIdRoute: typeof EditorIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/editor/$id': {
+      id: '/editor/$id'
+      path: '/editor/$id'
+      fullPath: '/editor/$id'
+      preLoaderRoute: typeof EditorIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NovoRoute: NovoRoute,
+  EditorIdRoute: EditorIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
