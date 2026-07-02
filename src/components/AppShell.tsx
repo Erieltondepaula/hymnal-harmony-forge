@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   FilePlus2,
@@ -7,9 +7,12 @@ import {
   Settings,
   HelpCircle,
   Music2,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { useSongSync } from "@/lib/song-sync";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -22,12 +25,43 @@ const nav = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  // Editor uses full-bleed layout without sidebar chrome
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+  useSongSync();
+
+  const isAuth = pathname === "/auth";
   const isEditor = pathname.startsWith("/editor/");
+
+  // Client-side guard: redirect to /auth when not signed in
+  useEffect(() => {
+    if (!loading && !user && !isAuth) {
+      navigate({ to: "/auth" });
+    }
+  }, [loading, user, isAuth, navigate]);
+
+  if (isAuth) {
+    return <>{children}</>;
+  }
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   if (isEditor) {
     return <div className="min-h-screen bg-background">{children}</div>;
   }
+
+  const displayName =
+    (user.user_metadata?.full_name as string | undefined) ??
+    (user.user_metadata?.name as string | undefined) ??
+    user.email?.split("@")[0] ??
+    "Você";
+  const initial = displayName.charAt(0).toUpperCase();
+  const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -46,9 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ul className="space-y-1">
             {nav.map((item) => {
               const active =
-                item.to === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(item.to);
+                item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
               const Icon = item.icon;
               return (
                 <li key={item.to}>
@@ -71,13 +103,28 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="mx-3 mb-4 flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
-            J
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
+              {initial}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium">{displayName}</div>
+            <div className="truncate text-xs text-muted-foreground">{user.email}</div>
           </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium">João</div>
-            <div className="truncate text-xs text-muted-foreground">Ministério Louvor</div>
-          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              await signOut();
+              navigate({ to: "/auth" });
+            }}
+            title="Sair"
+            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </aside>
 
