@@ -28,7 +28,10 @@ export type Song = {
   note?: string;
 };
 
-const uid = () => Math.random().toString(36).slice(2, 10);
+const uid = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 10);
 
 const seed: Song[] = [
   {
