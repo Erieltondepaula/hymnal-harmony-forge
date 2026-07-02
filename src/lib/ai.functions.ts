@@ -59,13 +59,13 @@ export const parseCifra = createServerFn({ method: "POST" })
       .join("\n");
 
     try {
-      const { experimental_output } = await generateText({
+      const { output } = await generateText({
         model: gateway("google/gemini-3-flash-preview"),
         system: SYSTEM,
         prompt,
-        experimental_output: Output.object({ schema: SongSchema }),
+        output: Output.object({ schema: SongSchema }),
       });
-      return experimental_output;
+      return output;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("429")) throw new Error("Muitas requisições. Tente novamente em instantes.");
