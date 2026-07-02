@@ -111,7 +111,13 @@ function NewMap() {
         bpmEstimated: parsed.bpmEstimated,
         time: parsed.time,
         rhythm: parsed.rhythm,
-        blocks: parsed.blocks,
+        blocks: parsed.blocks.map((b) => ({
+          type: b.type,
+          chords: b.chords,
+          repeat: b.repeat ?? undefined,
+          lyric: b.lyric ?? undefined,
+          note: b.note ?? undefined,
+        })),
       });
       toast.success("Mapa gerado com sucesso!");
       setTimeout(() => navigate({ to: "/editor/$id", params: { id } }), 300);
