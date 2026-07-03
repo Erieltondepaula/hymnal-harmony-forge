@@ -101,7 +101,7 @@ export function useSongSync() {
         return;
       }
       const store = useSongStore.getState();
-      const remote = (data as Row[]).map(rowToSong);
+      const remote = (data as unknown as Row[]).map(rowToSong);
       const local = store.songs;
 
       // First-time upload of local (seed / offline) songs
