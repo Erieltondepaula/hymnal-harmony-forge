@@ -50,6 +50,8 @@ export type Database = {
           note: string | null
           original_key: string
           rhythm: string
+          rhythm_arrows: string | null
+          rhythm_counts: string | null
           song_key: string
           tags: string[]
           time_signature: string
@@ -68,6 +70,8 @@ export type Database = {
           note?: string | null
           original_key?: string
           rhythm?: string
+          rhythm_arrows?: string | null
+          rhythm_counts?: string | null
           song_key?: string
           tags?: string[]
           time_signature?: string
@@ -86,6 +90,8 @@ export type Database = {
           note?: string | null
           original_key?: string
           rhythm?: string
+          rhythm_arrows?: string | null
+          rhythm_counts?: string | null
           song_key?: string
           tags?: string[]
           time_signature?: string
