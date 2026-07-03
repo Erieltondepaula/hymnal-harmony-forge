@@ -14,6 +14,8 @@ type Row = {
   bpm_estimated: boolean;
   time_signature: string;
   rhythm: string;
+  rhythm_arrows: string | null;
+  rhythm_counts: string | null;
   favorite: boolean;
   tags: string[];
   blocks: Block[];
@@ -33,6 +35,8 @@ function rowToSong(r: Row): Song {
     bpmEstimated: r.bpm_estimated,
     time: r.time_signature,
     rhythm: r.rhythm,
+    rhythmArrows: r.rhythm_arrows ?? undefined,
+    rhythmCounts: r.rhythm_counts ?? undefined,
     favorite: r.favorite,
     tags: r.tags ?? [],
     blocks: r.blocks ?? [],
@@ -54,12 +58,15 @@ function songToRow(s: Song, userId: string) {
     bpm_estimated: !!s.bpmEstimated,
     time_signature: s.time,
     rhythm: s.rhythm,
+    rhythm_arrows: s.rhythmArrows ?? null,
+    rhythm_counts: s.rhythmCounts ?? null,
     favorite: !!s.favorite,
     tags: s.tags ?? [],
     blocks: s.blocks,
     note: s.note ?? null,
   };
 }
+
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
