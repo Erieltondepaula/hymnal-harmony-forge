@@ -280,13 +280,15 @@ function Editor() {
                     </select>
                   </Field>
                 </div>
-                <Field label="Ritmo">
+                <Field label="Ritmo / Estilo">
                   <input
                     value={song.rhythm}
                     onChange={(e) => update(song.id, { rhythm: e.target.value })}
+                    placeholder="Ex.: Adoração, Pop Rock, Balada"
                     className="input"
                   />
                 </Field>
+
                 <Field label="Observações">
                   <textarea
                     rows={4}
