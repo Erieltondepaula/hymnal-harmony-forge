@@ -26,14 +26,17 @@ export function SongMapRenderer({ song, className }: { song: Song; className?: s
           <MetaItem label="RITMO" value={song.rhythm} />
         </div>
 
-        {/* Rhythm arrows */}
+        {/* Rhythm pattern */}
         <div className="mt-4 text-neutral-800">
           <div className="text-[13px] font-semibold tracking-wider text-neutral-500">RITMO</div>
-          <div className="mt-1 flex items-center gap-2 font-mono text-[15px]">
-            <span>↓ ↓ ↓ ↓ ↓ ↓ ↓</span>
+          <div className="mt-1 whitespace-pre-wrap break-words font-mono text-[15px] leading-6">
+            {song.rhythmArrows?.trim() || "↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓"}
           </div>
-          <div className="mt-0.5 font-mono text-[12px] text-neutral-500">1 | 2 | 3 | 4 |</div>
+          <div className="mt-0.5 whitespace-pre-wrap break-words font-mono text-[12px] leading-5 text-neutral-500">
+            {song.rhythmCounts?.trim() || "1 | 2 | 3 | 4 |"}
+          </div>
         </div>
+
       </header>
 
       {/* Blocks */}

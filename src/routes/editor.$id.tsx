@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Undo2,
@@ -289,6 +289,13 @@ function Editor() {
                   />
                 </Field>
 
+                <RhythmPatternEditor
+                  arrows={song.rhythmArrows ?? ""}
+                  counts={song.rhythmCounts ?? ""}
+                  onChange={(patch) => update(song.id, patch)}
+                />
+
+
                 <Field label="Observações">
                   <textarea
                     rows={4}
@@ -499,3 +506,170 @@ function BlockProps({
     </div>
   );
 }
+
+function RhythmPatternEditor({
+  arrows,
+  counts,
+  onChange,
+}: {
+  arrows: string;
+  counts: string;
+  onChange: (patch: { rhythmArrows?: string; rhythmCounts?: string }) => void;
+}) {
+  const arrowsRef = useRef<HTMLTextAreaElement>(null);
+  const countsRef = useRef<HTMLTextAreaElement>(null);
+  const [beats, setBeats] = useState(4);
+  const [sub, setSub] = useState<"none" | "e" | "i" | "ei">("none");
+
+  const insertInto = (
+    ref: React.RefObject<HTMLTextAreaElement | null>,
+    current: string,
+    token: string,
+    key: "rhythmArrows" | "rhythmCounts",
+  ) => {
+    const el = ref.current;
+    const sep = current && !current.endsWith(" ") ? " " : "";
+    if (!el) {
+      onChange({ [key]: current + sep + token });
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const before = current.slice(0, start);
+    const after = current.slice(end);
+    const needSpaceBefore = before && !before.endsWith(" ") ? " " : "";
+    const needSpaceAfter = after && !after.startsWith(" ") ? " " : "";
+    const next = before + needSpaceBefore + token + needSpaceAfter + after;
+    onChange({ [key]: next });
+    requestAnimationFrame(() => {
+      const pos = (before + needSpaceBefore + token).length;
+      el.focus();
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const generateCounts = () => {
+    const n = Math.max(1, Math.min(100, beats));
+    const parts: string[] = [];
+    for (let i = 1; i <= n; i++) {
+      parts.push(String(i));
+      if (sub === "e" || sub === "ei") parts.push("e");
+      if (sub === "i" || sub === "ei") parts.push("i");
+    }
+    onChange({ rhythmCounts: parts.join(" | ") + " |" });
+  };
+
+  const generateArrows = () => {
+    const n = Math.max(1, Math.min(100, beats));
+    const perBeat = sub === "none" ? 1 : sub === "ei" ? 3 : 2;
+    const total = n * perBeat;
+    const glyphs: string[] = [];
+    for (let i = 0; i < total; i++) glyphs.push(i % 2 === 0 ? "↓" : "↑");
+    onChange({ rhythmArrows: glyphs.join(" ") });
+  };
+
+  const chip = (label: string, onClick: () => void) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-md border border-border bg-background px-2 py-1 font-mono text-[12px] hover:border-primary hover:text-primary"
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-background/40 p-3">
+      <div className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Padrão rítmico
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-[11px] font-medium text-muted-foreground">Setas</label>
+          <div className="flex gap-1">
+            {chip("↓", () => insertInto(arrowsRef, arrows, "↓", "rhythmArrows"))}
+            {chip("↑", () => insertInto(arrowsRef, arrows, "↑", "rhythmArrows"))}
+            {chip("·", () => insertInto(arrowsRef, arrows, "·", "rhythmArrows"))}
+          </div>
+        </div>
+        <textarea
+          ref={arrowsRef}
+          rows={2}
+          value={arrows}
+          onChange={(e) => onChange({ rhythmArrows: e.target.value })}
+          placeholder="↓ ↑ ↓ ↑ ↓ ↑ ↓ ↑"
+          className="input resize-none font-mono"
+        />
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-[11px] font-medium text-muted-foreground">Contagem</label>
+          <div className="flex gap-1">
+            {chip("e", () => insertInto(countsRef, counts, "e", "rhythmCounts"))}
+            {chip("i", () => insertInto(countsRef, counts, "i", "rhythmCounts"))}
+            {chip("|", () => insertInto(countsRef, counts, "|", "rhythmCounts"))}
+          </div>
+        </div>
+        <textarea
+          ref={countsRef}
+          rows={2}
+          value={counts}
+          onChange={(e) => onChange({ rhythmCounts: e.target.value })}
+          placeholder="1 e 2 e 3 e 4 e"
+          className="input resize-none font-mono"
+        />
+      </div>
+
+      <div className="rounded-lg border border-dashed border-border p-2.5">
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Gerador rápido
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="mb-1 block text-[11px] text-muted-foreground">Tempos (1–100)</label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={beats}
+              onChange={(e) => setBeats(Number(e.target.value) || 1)}
+              className="input"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="mb-1 block text-[11px] text-muted-foreground">Subdivisão</label>
+            <select
+              value={sub}
+              onChange={(e) => setSub(e.target.value as typeof sub)}
+              className="input"
+            >
+              <option value="none">1 2 3</option>
+              <option value="e">1 e 2 e</option>
+              <option value="i">1 i 2 i</option>
+              <option value="ei">1 e i 2 e i</option>
+            </select>
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={generateArrows}
+            className="rounded-md border border-primary/40 bg-primary/10 px-2 py-1.5 text-[12px] font-semibold text-primary hover:bg-primary/20"
+          >
+            Gerar setas
+          </button>
+          <button
+            type="button"
+            onClick={generateCounts}
+            className="rounded-md border border-primary/40 bg-primary/10 px-2 py-1.5 text-[12px] font-semibold text-primary hover:bg-primary/20"
+          >
+            Gerar contagem
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

@@ -1,0 +1,1 @@
+ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS rhythm_arrows text, ADD COLUMN IF NOT EXISTS rhythm_counts text;

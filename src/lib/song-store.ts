@@ -20,6 +20,8 @@ export type Song = {
   bpmEstimated?: boolean;
   time: string; // "4/4"
   rhythm: string; // "Pop Rock"
+  rhythmArrows?: string; // ex: "↓ ↑ ↓ ↑ ↓ ↑ ↓ ↑"
+  rhythmCounts?: string; // ex: "1 e 2 e 3 e 4 e"
   favorite?: boolean;
   tags?: string[];
   updatedAt: number;
@@ -27,6 +29,7 @@ export type Song = {
   blocks: Block[];
   note?: string;
 };
+
 
 const uid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
