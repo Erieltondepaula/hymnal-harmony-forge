@@ -135,8 +135,10 @@ function Editor() {
           <input
             value={song.title}
             onChange={(e) => update(song.id, { title: e.target.value })}
-            className="min-w-0 max-w-[400px] truncate bg-transparent text-[15px] font-semibold outline-none"
+            placeholder="Nome da música"
+            className="min-w-0 max-w-[400px] truncate rounded-md border border-transparent bg-transparent px-2 py-1 text-[15px] font-semibold outline-none transition-colors hover:border-border focus:border-primary focus:bg-background"
           />
+
           <span
             className={cn(
               "ml-2 text-[12px] transition-opacity",
