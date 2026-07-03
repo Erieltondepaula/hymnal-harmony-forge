@@ -227,13 +227,23 @@ function Editor() {
           <div className="flex-1 space-y-5 overflow-auto p-4">
             {!selected ? (
               <>
+                <Field label="Título da música">
+                  <input
+                    value={song.title}
+                    onChange={(e) => update(song.id, { title: e.target.value })}
+                    placeholder="Ex.: Teu Amor Não Falha"
+                    className="input"
+                  />
+                </Field>
                 <Field label="Artista">
                   <input
                     value={song.artist}
                     onChange={(e) => update(song.id, { artist: e.target.value })}
+                    placeholder="Ex.: Fernandinho"
                     className="input"
                   />
                 </Field>
+
                 <Field label="Tom">
                   <select
                     value={song.key}
