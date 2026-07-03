@@ -522,7 +522,7 @@ function RhythmPatternEditor({
   const [sub, setSub] = useState<"none" | "e" | "i" | "ei">("none");
 
   const insertInto = (
-    ref: React.RefObject<HTMLTextAreaElement>,
+    ref: React.RefObject<HTMLTextAreaElement | null>,
     current: string,
     token: string,
     key: "rhythmArrows" | "rhythmCounts",
