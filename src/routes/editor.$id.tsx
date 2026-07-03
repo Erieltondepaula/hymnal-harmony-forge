@@ -289,6 +289,13 @@ function Editor() {
                   />
                 </Field>
 
+                <RhythmPatternEditor
+                  arrows={song.rhythmArrows ?? ""}
+                  counts={song.rhythmCounts ?? ""}
+                  onChange={(patch) => update(song.id, patch)}
+                />
+
+
                 <Field label="Observações">
                   <textarea
                     rows={4}
