@@ -21,6 +21,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const nav = useNavigate();
+  const { next } = Route.useSearch();
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -29,8 +30,11 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) nav({ to: "/" });
-  }, [user, loading, nav]);
+    if (!loading && user) {
+      if (next) window.location.href = next;
+      else nav({ to: "/" });
+    }
+  }, [user, loading, nav, next]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +45,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: next ? `${window.location.origin}${next}` : window.location.origin,
             data: { full_name: name || undefined },
           },
         });
@@ -64,14 +68,12 @@ function AuthPage() {
     setBusy(true);
     try {
       const res = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: next ? `${window.location.origin}${next}` : window.location.origin,
       });
       if (res.error) {
         toast.error(res.error.message ?? "Falha no Google");
         setBusy(false);
       }
-      // if res.redirected, browser navigates away
-      // if tokens returned, useEffect above will navigate to /
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro Google");
       setBusy(false);
