@@ -147,3 +147,50 @@
   color: #0a0a0a;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
+
+/* Print: A4 portrait, hide app chrome, only the .print-area is rendered.
+   Ensures chord background colors print (print-color-adjust: exact). */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0a0a0a !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+  .print-area * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .print-area .chord-cell {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .print-area section,
+  .print-area .chord-cell {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+

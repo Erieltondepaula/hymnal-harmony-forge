@@ -1,11 +1,38 @@
 import type { Song } from "@/lib/song-store";
 import { cn } from "@/lib/utils";
 
+// Soft pastel palette — light backgrounds so black chord text stays legible.
+const CHORD_PALETTE = [
+  { bg: "#FEE2E2", border: "#FCA5A5" }, // red
+  { bg: "#FFEDD5", border: "#FDBA74" }, // orange
+  { bg: "#FEF3C7", border: "#FCD34D" }, // amber
+  { bg: "#FEF9C3", border: "#FDE047" }, // yellow
+  { bg: "#ECFCCB", border: "#BEF264" }, // lime
+  { bg: "#DCFCE7", border: "#86EFAC" }, // green
+  { bg: "#CCFBF1", border: "#5EEAD4" }, // teal
+  { bg: "#CFFAFE", border: "#67E8F9" }, // cyan
+  { bg: "#DBEAFE", border: "#93C5FD" }, // blue
+  { bg: "#E0E7FF", border: "#A5B4FC" }, // indigo
+  { bg: "#EDE9FE", border: "#C4B5FD" }, // violet
+  { bg: "#F3E8FF", border: "#D8B4FE" }, // purple
+  { bg: "#FAE8FF", border: "#F0ABFC" }, // fuchsia
+  { bg: "#FCE7F3", border: "#F9A8D4" }, // pink
+  { bg: "#FFE4E6", border: "#FDA4AF" }, // rose
+];
+
+// Deterministic color from chord root note — same chord always gets same color.
+function colorFor(chord: string) {
+  const key = chord.trim().replace(/[^A-Ga-g#b]/g, "").slice(0, 2) || chord;
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return CHORD_PALETTE[hash % CHORD_PALETTE.length];
+}
+
 export function SongMapRenderer({ song, className }: { song: Song; className?: string }) {
   return (
     <div
       className={cn(
-        "paper mx-auto w-full max-w-[860px] rounded-none px-14 py-12 font-sans",
+        "print-area paper mx-auto w-full max-w-[860px] rounded-none px-14 py-12 font-sans",
         className,
       )}
       style={{ fontFamily: "Inter, sans-serif" }}
@@ -36,7 +63,6 @@ export function SongMapRenderer({ song, className }: { song: Song; className?: s
             {song.rhythmCounts?.trim() || "1 | 2 | 3 | 4 |"}
           </div>
         </div>
-
       </header>
 
       {/* Blocks */}
@@ -54,18 +80,26 @@ export function SongMapRenderer({ song, className }: { song: Song; className?: s
               ) : null}
             </div>
 
-            <div className="mt-2 grid grid-flow-col auto-cols-fr overflow-hidden rounded-sm border border-neutral-800">
-              {b.chords.map((c, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "px-3 py-2 text-center text-[15px] font-semibold text-neutral-900",
-                    i < b.chords.length - 1 && "border-r border-neutral-800",
-                  )}
-                >
-                  {c}
-                </div>
-              ))}
+            <div className="mt-2 grid grid-flow-col auto-cols-fr overflow-hidden rounded-md border border-neutral-800">
+              {b.chords.map((c, i) => {
+                const color = colorFor(c);
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "chord-cell px-3 py-2 text-center text-[15px] font-semibold text-neutral-900",
+                      i < b.chords.length - 1 && "border-r border-neutral-800",
+                    )}
+                    style={{
+                      backgroundColor: color.bg,
+                      WebkitPrintColorAdjust: "exact",
+                      printColorAdjust: "exact",
+                    }}
+                  >
+                    {c}
+                  </div>
+                );
+              })}
             </div>
 
             {b.lyric ? (
