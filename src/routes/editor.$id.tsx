@@ -59,6 +59,46 @@ function Editor() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
 
+  // Escala o .print-area para caber em UMA folha A4 antes de imprimir.
+  const handlePrintFitA4 = () => {
+    const el = document.querySelector<HTMLElement>(".print-area");
+    if (!el) {
+      window.print();
+      return;
+    }
+    // A4 útil = 210mm x 297mm - 12mm de margem em cada lado -> 186mm x 273mm.
+    const MM_TO_PX = 96 / 25.4;
+    const targetW = 186 * MM_TO_PX;
+    const targetH = 273 * MM_TO_PX;
+
+    const prevWidth = el.style.width;
+    const prevMaxWidth = el.style.maxWidth;
+    const prevTransform = el.style.transform;
+    const prevOrigin = el.style.transformOrigin;
+
+    // Renderiza no tamanho exato do papel para medir.
+    el.style.width = `${targetW}px`;
+    el.style.maxWidth = `${targetW}px`;
+    el.style.transform = "none";
+    // Força reflow
+    const naturalH = el.scrollHeight;
+    const scale = Math.min(1, targetH / Math.max(naturalH, 1));
+    el.style.setProperty("--print-scale", String(scale));
+
+    const cleanup = () => {
+      el.style.width = prevWidth;
+      el.style.maxWidth = prevMaxWidth;
+      el.style.transform = prevTransform;
+      el.style.transformOrigin = prevOrigin;
+      el.style.removeProperty("--print-scale");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+    // Fallback caso afterprint não dispare
+    setTimeout(cleanup, 2000);
+  };
+
   const selected = useMemo(
     () => song?.blocks.find((b) => b.id === selectedId) ?? null,
     [song, selectedId],
@@ -165,7 +205,7 @@ function Editor() {
             <Share2 className="h-4 w-4" />
           </ToolbarBtn>
           <button
-            onClick={() => window.print()}
+            onClick={handlePrintFitA4}
             className="ml-2 flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-[13px] font-semibold text-primary-foreground hover:brightness-110"
             style={{ transitionDuration: "180ms" }}
           >
