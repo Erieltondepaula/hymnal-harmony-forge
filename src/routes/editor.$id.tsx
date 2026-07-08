@@ -165,7 +165,7 @@ function Editor() {
             <Share2 className="h-4 w-4" />
           </ToolbarBtn>
           <button
-            onClick={() => window.print()}
+            onClick={handlePrintFitA4}
             className="ml-2 flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-[13px] font-semibold text-primary-foreground hover:brightness-110"
             style={{ transitionDuration: "180ms" }}
           >
