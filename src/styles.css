@@ -171,13 +171,17 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
-    max-width: none !important;
+    /* Renderiza exatamente na área útil da A4 e escala para caber em 1 página. */
+    width: 186mm !important;
+    max-width: 186mm !important;
+    height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
     box-shadow: none !important;
     border: 0 !important;
     border-radius: 0 !important;
+    transform: scale(var(--print-scale, 1));
+    transform-origin: top left;
   }
   .print-area * {
     -webkit-print-color-adjust: exact !important;
@@ -187,10 +191,12 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+  /* Quando escalado para caber, desliga quebras de página forçadas
+     para garantir uma única folha. */
   .print-area section,
   .print-area .chord-cell {
-    page-break-inside: avoid;
     break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 
