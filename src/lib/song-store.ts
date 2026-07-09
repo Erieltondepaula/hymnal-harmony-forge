@@ -39,7 +39,12 @@ export type Song = {
   createdAt: number;
   blocks: Block[];
   note?: string;
+  // Storage invariant flag: when true, `blocks` are stored in `originalKey`
+  // and rendered in `key` via smart transposition. New songs are created
+  // with this true; legacy songs are migrated lazily by the editor.
+  blocksInOriginalKey?: boolean;
 };
+
 
 
 
