@@ -428,7 +428,30 @@ function Editor() {
   );
 }
 
+function ShowToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="h-3.5 w-3.5 accent-primary"
+      />
+      <span className="text-[12px] text-foreground">{label}</span>
+    </label>
+  );
+}
+
 function ToolbarBtn({
+
   children,
   onClick,
   title,
