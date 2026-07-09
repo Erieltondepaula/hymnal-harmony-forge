@@ -19,13 +19,14 @@ function timeAgo(ts: number) {
 function Dashboard() {
   const songs = useSongStore((s) => s.songs);
   const createBlank = useSongStore((s) => s.createBlank);
+  const userName = usePreferences((p) => p.userName);
   const navigate = useNavigate();
   const recent = [...songs].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6);
 
   return (
     <div className="space-y-12">
       <header className="space-y-2">
-        <h1 className="h-display">Olá, João</h1>
+        <h1 className="h-display">Olá, {userName || "Você"}</h1>
         <p className="text-[18px] text-muted-foreground">Vamos montar um novo mapa?</p>
       </header>
 
