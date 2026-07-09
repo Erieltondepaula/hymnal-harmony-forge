@@ -287,9 +287,9 @@ function Editor() {
           </div>
           <div className="flex-1 overflow-auto p-2">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={song.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={displayBlocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
                 <ul className="space-y-1">
-                  {song.blocks.map((b) => (
+                  {displayBlocks.map((b) => (
                     <SortableBlockRow
                       key={b.id}
                       block={b}
@@ -310,8 +310,9 @@ function Editor() {
 
         {/* Preview */}
         <main className="overflow-auto bg-[#0b0d12] p-8">
-          <SongMapRenderer song={song} />
+          <SongMapRenderer song={displaySong} />
         </main>
+
 
         {/* Properties */}
         <aside className="flex flex-col border-l border-border bg-surface">
