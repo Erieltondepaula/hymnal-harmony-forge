@@ -126,11 +126,27 @@ export function SongMapRenderer({ song, className }: { song: Song; className?: s
               </div>
 
               {b.lyric ? (
-                <p className="mt-1.5 text-[13px] italic text-neutral-700">{b.lyric}</p>
+                <p className="mt-2 text-[15px] font-medium leading-relaxed text-neutral-900">
+                  {b.lyric}
+                </p>
               ) : null}
               {b.note ? (
-                <p className="mt-0.5 text-[12px] text-neutral-500">OBS: {b.note}</p>
+                <div
+                  className="mt-2 flex items-start gap-2 rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2"
+                  style={{
+                    WebkitPrintColorAdjust: "exact",
+                    printColorAdjust: "exact",
+                  }}
+                >
+                  <span className="text-[13px] font-bold uppercase tracking-wider text-amber-700">
+                    OBS:
+                  </span>
+                  <span className="text-[14px] font-semibold leading-snug text-amber-900">
+                    {b.note}
+                  </span>
+                </div>
               ) : null}
+
             </section>
           );
         })}
