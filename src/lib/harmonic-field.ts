@@ -180,16 +180,19 @@ export function keyInterval(from: string, to: string): number {
   return diff;
 }
 
-// Human-friendly label for the interval, e.g. "+1 Tom", "-2 Tons", "+1 semitom".
+// Human-friendly label using tons + semitons (music convention).
+// 1 tom = 2 semitons. Examples: 1 semitom → "½ tom", 5 semitons → "2½ tons".
 export function formatKeyInterval(from: string, to: string): string {
   const diff = keyInterval(from, to);
   if (diff === 0) return "";
   const sign = diff > 0 ? "+" : "-";
   const abs = Math.abs(diff);
-  if (abs % 2 === 0) {
-    const tons = abs / 2;
-    return `${sign}${tons} ${tons === 1 ? "Tom" : "Tons"}`;
-  }
-  return `${sign}${abs} ${abs === 1 ? "semitom" : "semitons"}`;
+  const whole = Math.floor(abs / 2);
+  const half = abs % 2 === 1;
+  let label: string;
+  if (whole === 0) label = "½ tom";
+  else if (half) label = `${whole}½ tons`;
+  else label = `${whole} ${whole === 1 ? "tom" : "tons"}`;
+  return `${sign}${label}`;
 }
 
