@@ -190,7 +190,13 @@ function Editor() {
     [song, displayBlocks],
   );
 
+  const selected = useMemo(
+    () => displayBlocks.find((b) => b.id === selectedId) ?? null,
+    [displayBlocks, selectedId],
+  );
+
   const intervalLabel = formatKeyInterval(song.originalKey, song.key);
+
 
   const show: Required<ShowFlags> = {
     key: song.show?.key ?? true,
