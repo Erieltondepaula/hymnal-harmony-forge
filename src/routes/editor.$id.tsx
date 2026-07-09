@@ -155,10 +155,44 @@ function Editor() {
     reorderBlocks(song.id, arrayMove(ids, oldIdx, newIdx));
   };
 
+  // Storage invariant: blocks live in `originalKey` and are transposed to
+  // `key` at render time. Migrate legacy songs whose blocks were mutated
+  // during previous key changes.
+  const migratedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!song || song.blocksInOriginalKey) return;
+    if (migratedRef.current === song.id) return;
+    migratedRef.current = song.id;
+    const normalizedBlocks =
+      song.key !== song.originalKey
+        ? smartTransposeAll(song.blocks, song.key, song.originalKey)
+        : song.blocks;
+    update(song.id, { blocks: normalizedBlocks, blocksInOriginalKey: true });
+  }, [song?.id, song?.blocksInOriginalKey, song?.key, song?.originalKey, song?.blocks, update]);
+
   const changeKey = (newKey: string) => {
-    const newBlocks = smartTransposeAll(song.blocks, song.key, newKey);
-    update(song.id, { key: newKey, blocks: newBlocks });
+    // Only change the "current" key — blocks stay stored in originalKey.
+    update(song.id, { key: newKey });
   };
+
+  const changeOriginalKey = (newOriginal: string) => {
+    // Re-anchor the storage baseline: transpose stored blocks to the new
+    // original and keep the current display key stable.
+    const rebasedBlocks = smartTransposeAll(song.blocks, song.originalKey, newOriginal);
+    update(song.id, { originalKey: newOriginal, blocks: rebasedBlocks });
+  };
+
+  const displayBlocks = useMemo(
+    () => smartTransposeAll(song.blocks, song.originalKey, song.key),
+    [song.blocks, song.originalKey, song.key],
+  );
+
+  const displaySong: Song = useMemo(
+    () => ({ ...song, blocks: displayBlocks }),
+    [song, displayBlocks],
+  );
+
+  const intervalLabel = formatKeyInterval(song.originalKey, song.key);
 
   const show: Required<ShowFlags> = {
     key: song.show?.key ?? true,
@@ -170,6 +204,8 @@ function Editor() {
   };
   const toggleShow = (k: keyof ShowFlags) =>
     update(song.id, { show: { ...show, [k]: !show[k] } });
+
+
 
 
   return (
