@@ -155,9 +155,21 @@ function Editor() {
   };
 
   const changeKey = (newKey: string) => {
-    const newBlocks = transposeAll(song.blocks, song.key, newKey);
+    const newBlocks = smartTransposeAll(song.blocks, song.key, newKey);
     update(song.id, { key: newKey, blocks: newBlocks });
   };
+
+  const show: Required<ShowFlags> = {
+    key: song.show?.key ?? true,
+    bpm: song.show?.bpm ?? true,
+    time: song.show?.time ?? true,
+    rhythm: song.show?.rhythm ?? true,
+    batida: song.show?.batida ?? true,
+    capo: song.show?.capo ?? true,
+  };
+  const toggleShow = (k: keyof ShowFlags) =>
+    update(song.id, { show: { ...show, [k]: !show[k] } });
+
 
   return (
     <div className="flex h-screen flex-col bg-background">
