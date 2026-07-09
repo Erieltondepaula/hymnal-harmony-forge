@@ -151,7 +151,7 @@ export const useSongStore = create<State>()((set, get) => ({
       createFromSeed: () => {
         const id = uid();
         const now = Date.now();
-        const base = seed[0];
+        const base = buildSeed()[0];
         const song: Song = {
           ...JSON.parse(JSON.stringify(base)),
           id,
