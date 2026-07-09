@@ -28,8 +28,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useSongStore, type Block, type ShowFlags } from "@/lib/song-store";
-import { smartTransposeAll } from "@/lib/harmonic-field";
+import { useSongStore, type Block, type ShowFlags, type Song } from "@/lib/song-store";
+import { smartTransposeAll, smartTransposeChord, formatKeyInterval } from "@/lib/harmonic-field";
+
 
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { cn } from "@/lib/utils";
@@ -100,10 +101,8 @@ function Editor() {
     setTimeout(cleanup, 2000);
   };
 
-  const selected = useMemo(
-    () => song?.blocks.find((b) => b.id === selectedId) ?? null,
-    [song, selectedId],
-  );
+  // `selected` is computed later from displayBlocks (after the null-check).
+
 
   // Undo/redo shortcuts
   useEffect(() => {
@@ -154,10 +153,50 @@ function Editor() {
     reorderBlocks(song.id, arrayMove(ids, oldIdx, newIdx));
   };
 
+  // Storage invariant: blocks live in `originalKey` and are transposed to
+  // `key` at render time. Migrate legacy songs whose blocks were mutated
+  // during previous key changes.
+  const migratedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!song || song.blocksInOriginalKey) return;
+    if (migratedRef.current === song.id) return;
+    migratedRef.current = song.id;
+    const normalizedBlocks =
+      song.key !== song.originalKey
+        ? smartTransposeAll(song.blocks, song.key, song.originalKey)
+        : song.blocks;
+    update(song.id, { blocks: normalizedBlocks, blocksInOriginalKey: true });
+  }, [song?.id, song?.blocksInOriginalKey, song?.key, song?.originalKey, song?.blocks, update]);
+
   const changeKey = (newKey: string) => {
-    const newBlocks = smartTransposeAll(song.blocks, song.key, newKey);
-    update(song.id, { key: newKey, blocks: newBlocks });
+    // Only change the "current" key — blocks stay stored in originalKey.
+    update(song.id, { key: newKey });
   };
+
+  const changeOriginalKey = (newOriginal: string) => {
+    // Re-anchor the storage baseline: transpose stored blocks to the new
+    // original and keep the current display key stable.
+    const rebasedBlocks = smartTransposeAll(song.blocks, song.originalKey, newOriginal);
+    update(song.id, { originalKey: newOriginal, blocks: rebasedBlocks });
+  };
+
+  const displayBlocks = useMemo(
+    () => smartTransposeAll(song.blocks, song.originalKey, song.key),
+    [song.blocks, song.originalKey, song.key],
+  );
+
+  const displaySong: Song = useMemo(
+    () => ({ ...song, blocks: displayBlocks }),
+    [song, displayBlocks],
+  );
+
+  const selected = useMemo(
+    () => displayBlocks.find((b) => b.id === selectedId) ?? null,
+    [displayBlocks, selectedId],
+  );
+
+  const intervalLabel = formatKeyInterval(song.originalKey, song.key);
+
 
   const show: Required<ShowFlags> = {
     key: song.show?.key ?? true,
@@ -169,6 +208,8 @@ function Editor() {
   };
   const toggleShow = (k: keyof ShowFlags) =>
     update(song.id, { show: { ...show, [k]: !show[k] } });
+
+
 
 
   return (
@@ -246,9 +287,9 @@ function Editor() {
           </div>
           <div className="flex-1 overflow-auto p-2">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={song.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={displayBlocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
                 <ul className="space-y-1">
-                  {song.blocks.map((b) => (
+                  {displayBlocks.map((b) => (
                     <SortableBlockRow
                       key={b.id}
                       block={b}
@@ -269,8 +310,9 @@ function Editor() {
 
         {/* Preview */}
         <main className="overflow-auto bg-[#0b0d12] p-8">
-          <SongMapRenderer song={song} />
+          <SongMapRenderer song={displaySong} />
         </main>
+
 
         {/* Properties */}
         <aside className="flex flex-col border-l border-border bg-surface">
@@ -297,19 +339,46 @@ function Editor() {
                   />
                 </Field>
 
-                <Field label="Tom">
-                  <select
-                    value={song.key}
-                    onChange={(e) => changeKey(e.target.value)}
-                    className="input"
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Tom Original">
+                    <select
+                      value={song.originalKey}
+                      onChange={(e) => changeOriginalKey(e.target.value)}
+                      className="input"
+                    >
+                      {KEYS.map((k) => (
+                        <option key={k} value={k}>{k}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field
+                    label={
+                      intervalLabel
+                        ? `Tom Atual (${intervalLabel})`
+                        : "Tom Atual"
+                    }
                   >
-                    {KEYS.map((k) => (
-                      <option key={k} value={k}>
-                        {k}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                    <select
+                      value={song.key}
+                      onChange={(e) => changeKey(e.target.value)}
+                      className="input"
+                    >
+                      {KEYS.map((k) => (
+                        <option key={k} value={k}>{k}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+                {song.key !== song.originalKey ? (
+                  <button
+                    type="button"
+                    onClick={() => changeKey(song.originalKey)}
+                    className="text-[12px] text-primary hover:underline"
+                  >
+                    ↺ Voltar ao tom original ({song.originalKey})
+                  </button>
+                ) : null}
+
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="BPM">
                     <input
@@ -388,7 +457,20 @@ function Editor() {
             ) : (
               <BlockProps
                 block={selected}
-                onChange={(patch) => updateBlock(song.id, selected.id, patch)}
+                onChange={(patch) => {
+                  // `selected` shows chords in the CURRENT key; storage lives
+                  // in the ORIGINAL key. Transpose chord edits back before
+                  // persisting so the storage invariant is preserved.
+                  if (patch.chords && song.key !== song.originalKey) {
+                    patch = {
+                      ...patch,
+                      chords: patch.chords.map((c) =>
+                        smartTransposeChord(c, song.key, song.originalKey),
+                      ),
+                    };
+                  }
+                  updateBlock(song.id, selected.id, patch);
+                }}
                 onDeselect={() => setSelectedId(null)}
               />
             )}
@@ -396,19 +478,6 @@ function Editor() {
         </aside>
       </div>
 
-      {/* Status bar */}
-      <footer className="flex h-8 shrink-0 items-center justify-between border-t border-border bg-surface px-4 text-[12px] text-muted-foreground">
-        <div className="flex items-center gap-4">
-          <span>{song.blocks.length} blocos</span>
-          <span>
-            Tom <span className="text-foreground">{song.key}</span>
-          </span>
-          <span>
-            BPM <span className="text-foreground">{song.bpm}</span>
-          </span>
-        </div>
-        <div>MapaLouvor</div>
-      </footer>
 
       <style>{`
         .input {

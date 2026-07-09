@@ -39,7 +39,12 @@ export type Song = {
   createdAt: number;
   blocks: Block[];
   note?: string;
+  // Storage invariant flag: when true, `blocks` are stored in `originalKey`
+  // and rendered in `key` via smart transposition. New songs are created
+  // with this true; legacy songs are migrated lazily by the editor.
+  blocksInOriginalKey?: boolean;
 };
+
 
 
 
@@ -151,7 +156,9 @@ export const useSongStore = create<State>()(
           createdAt: now,
           updatedAt: now,
           favorite: false,
+          blocksInOriginalKey: true,
         };
+
         set((s) => ({ songs: [song, ...s.songs] }));
         return id;
       },
@@ -174,7 +181,9 @@ export const useSongStore = create<State>()(
             { id: uid(), type: "PARTE 1", chords: ["C", "G", "Am", "F"], lyric: "..." },
             { id: uid(), type: "REFRÃO", chords: ["F", "C", "G", "Am"], repeat: "2X", lyric: "..." },
           ],
+          blocksInOriginalKey: true,
         };
+
         set((s) => ({ songs: [song, ...s.songs] }));
         return id;
       },
@@ -194,7 +203,9 @@ export const useSongStore = create<State>()(
           createdAt: now,
           updatedAt: now,
           blocks: data.blocks.map((b) => ({ ...b, id: uid() })),
+          blocksInOriginalKey: true,
         };
+
         set((s) => ({ songs: [song, ...s.songs] }));
         return id;
       },

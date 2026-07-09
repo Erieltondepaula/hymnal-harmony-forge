@@ -166,3 +166,30 @@ export function smartTransposeAll<T extends { chords: string[] }>(
 export function diatonicField(key: string): string[] {
   return [1, 2, 3, 4, 5, 6, 7].map((d) => degreeToChord(d, "", key));
 }
+
+// Signed semitone distance between two keys, normalized to [-6, 6].
+export function keyInterval(from: string, to: string): number {
+  const fRoot = relativeMajor(from);
+  const tRoot = relativeMajor(to);
+  const fIdx = NOTE_IDX[fRoot];
+  const tIdx = NOTE_IDX[tRoot];
+  if (fIdx == null || tIdx == null) return 0;
+  let diff = tIdx - fIdx;
+  if (diff > 6) diff -= 12;
+  if (diff < -6) diff += 12;
+  return diff;
+}
+
+// Human-friendly label for the interval, e.g. "+1 Tom", "-2 Tons", "+1 semitom".
+export function formatKeyInterval(from: string, to: string): string {
+  const diff = keyInterval(from, to);
+  if (diff === 0) return "";
+  const sign = diff > 0 ? "+" : "-";
+  const abs = Math.abs(diff);
+  if (abs % 2 === 0) {
+    const tons = abs / 2;
+    return `${sign}${tons} ${tons === 1 ? "Tom" : "Tons"}`;
+  }
+  return `${sign}${abs} ${abs === 1 ? "semitom" : "semitons"}`;
+}
+
