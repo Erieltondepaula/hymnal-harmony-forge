@@ -101,10 +101,8 @@ function Editor() {
     setTimeout(cleanup, 2000);
   };
 
-  const selected = useMemo(
-    () => song?.blocks.find((b) => b.id === selectedId) ?? null,
-    [song, selectedId],
-  );
+  // `selected` is computed later from displayBlocks (after the null-check).
+
 
   // Undo/redo shortcuts
   useEffect(() => {
