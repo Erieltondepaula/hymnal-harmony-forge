@@ -28,8 +28,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useSongStore, type Block } from "@/lib/song-store";
-import { transposeAll } from "@/lib/transpose";
+import { useSongStore, type Block, type ShowFlags } from "@/lib/song-store";
+import { smartTransposeAll } from "@/lib/harmonic-field";
+
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { cn } from "@/lib/utils";
 
