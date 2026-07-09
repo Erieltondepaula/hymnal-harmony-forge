@@ -137,7 +137,7 @@ function pushHistory(state: State, id: string) {
 }
 
 export const useSongStore = create<State>()((set, get) => ({
-      songs: seed,
+      songs: [],
       history: {},
       future: {},
       getSong: (id) => get().songs.find((s) => s.id === id),
