@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 export type PageSize = "A4" | "Carta" | "A5" | "custom";
 
@@ -28,8 +27,8 @@ export type Preferences = {
   footerText: string;
 };
 
-const DEFAULTS: Preferences = {
-  userName: "João",
+export const DEFAULT_PREFERENCES: Preferences = {
+  userName: "",
   userEmail: "",
   ministry: "",
 
@@ -50,20 +49,20 @@ const DEFAULTS: Preferences = {
 };
 
 type State = Preferences & {
+  _loaded: boolean;
   update: (patch: Partial<Preferences>) => void;
   reset: () => void;
+  hydrate: (prefs: Partial<Preferences>) => void;
 };
 
-export const usePreferences = create<State>()(
-  persist(
-    (set) => ({
-      ...DEFAULTS,
-      update: (patch) => set((s) => ({ ...s, ...patch })),
-      reset: () => set(() => ({ ...DEFAULTS })),
-    }),
-    { name: "mapalouvor-preferences-v1" },
-  ),
-);
+export const usePreferences = create<State>()((set) => ({
+  ...DEFAULT_PREFERENCES,
+  _loaded: false,
+  update: (patch) => set((s) => ({ ...s, ...patch })),
+  reset: () => set(() => ({ ...DEFAULT_PREFERENCES, _loaded: true })),
+  hydrate: (prefs) =>
+    set(() => ({ ...DEFAULT_PREFERENCES, ...prefs, _loaded: true })),
+}));
 
 export function pageDimensionsMm(prefs: Preferences): { w: number; h: number } {
   switch (prefs.pageSize) {
