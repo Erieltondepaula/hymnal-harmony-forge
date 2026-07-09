@@ -181,7 +181,9 @@ export const useSongStore = create<State>()(
             { id: uid(), type: "PARTE 1", chords: ["C", "G", "Am", "F"], lyric: "..." },
             { id: uid(), type: "REFRÃO", chords: ["F", "C", "G", "Am"], repeat: "2X", lyric: "..." },
           ],
+          blocksInOriginalKey: true,
         };
+
         set((s) => ({ songs: [song, ...s.songs] }));
         return id;
       },
