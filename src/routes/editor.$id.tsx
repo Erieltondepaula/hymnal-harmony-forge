@@ -339,19 +339,46 @@ function Editor() {
                   />
                 </Field>
 
-                <Field label="Tom">
-                  <select
-                    value={song.key}
-                    onChange={(e) => changeKey(e.target.value)}
-                    className="input"
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Tom Original">
+                    <select
+                      value={song.originalKey}
+                      onChange={(e) => changeOriginalKey(e.target.value)}
+                      className="input"
+                    >
+                      {KEYS.map((k) => (
+                        <option key={k} value={k}>{k}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field
+                    label={
+                      intervalLabel
+                        ? `Tom Atual (${intervalLabel})`
+                        : "Tom Atual"
+                    }
                   >
-                    {KEYS.map((k) => (
-                      <option key={k} value={k}>
-                        {k}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                    <select
+                      value={song.key}
+                      onChange={(e) => changeKey(e.target.value)}
+                      className="input"
+                    >
+                      {KEYS.map((k) => (
+                        <option key={k} value={k}>{k}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+                {song.key !== song.originalKey ? (
+                  <button
+                    type="button"
+                    onClick={() => changeKey(song.originalKey)}
+                    className="text-[12px] text-primary hover:underline"
+                  >
+                    ↺ Voltar ao tom original ({song.originalKey})
+                  </button>
+                ) : null}
+
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="BPM">
                     <input
