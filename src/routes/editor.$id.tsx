@@ -457,7 +457,20 @@ function Editor() {
             ) : (
               <BlockProps
                 block={selected}
-                onChange={(patch) => updateBlock(song.id, selected.id, patch)}
+                onChange={(patch) => {
+                  // `selected` shows chords in the CURRENT key; storage lives
+                  // in the ORIGINAL key. Transpose chord edits back before
+                  // persisting so the storage invariant is preserved.
+                  if (patch.chords && song.key !== song.originalKey) {
+                    patch = {
+                      ...patch,
+                      chords: patch.chords.map((c) =>
+                        smartTransposeChord(c, song.key, song.originalKey),
+                      ),
+                    };
+                  }
+                  updateBlock(song.id, selected.id, patch);
+                }}
                 onDeselect={() => setSelectedId(null)}
               />
             )}
@@ -465,19 +478,6 @@ function Editor() {
         </aside>
       </div>
 
-      {/* Status bar */}
-      <footer className="flex h-8 shrink-0 items-center justify-between border-t border-border bg-surface px-4 text-[12px] text-muted-foreground">
-        <div className="flex items-center gap-4">
-          <span>{song.blocks.length} blocos</span>
-          <span>
-            Tom <span className="text-foreground">{song.key}</span>
-          </span>
-          <span>
-            BPM <span className="text-foreground">{song.bpm}</span>
-          </span>
-        </div>
-        <div>MapaLouvor</div>
-      </footer>
 
       <style>{`
         .input {
