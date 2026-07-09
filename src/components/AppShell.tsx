@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useSongSync } from "@/lib/song-sync";
+import { usePreferencesSync } from "@/lib/preferences-sync";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
