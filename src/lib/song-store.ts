@@ -52,52 +52,59 @@ const uid = () =>
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2, 10);
 
-const seed: Song[] = [
-  {
-    id: "teu-amor-nao-falha",
-    title: "Teu Amor Não Falha",
-    artist: "Fernandinho",
-    originalKey: "Am",
-    key: "Am",
-    bpm: 74,
-    time: "4/4",
-    rhythm: "Adoração",
-    favorite: true,
-    tags: ["Adoração", "Ministração"],
-    createdAt: Date.now() - 86400000 * 4,
-    updatedAt: Date.now() - 3600000,
-    blocks: [
-      { id: uid(), type: "INTRODUÇÃO", chords: ["Am", "F", "C", "G"], repeat: "2X" },
-      { id: uid(), type: "PARTE 1", chords: ["Am", "F", "C", "G", "Am", "F", "C", "G"], lyric: "Nada vai me separar..." },
-      { id: uid(), type: "REFRÃO", chords: ["F", "C", "G", "Dm", "F", "C", "G", "Dm"], repeat: "1X", lyric: "Tu és o mesmo pra sempre..." },
-      { id: uid(), type: "PARTE 2", chords: ["Am", "F", "C", "G", "Am", "F", "C", "G"], lyric: "Se o vento é forte e profundo o mar..." },
-      { id: uid(), type: "REFRÃO", chords: ["F", "C", "G", "Dm", "F", "C", "G", "Dm"], repeat: "2X", lyric: "Tu és o mesmo pra sempre..." },
-      { id: uid(), type: "PARTE 3", chords: ["F", "Am", "G", "F", "Am", "G"], lyric: "Tu fazes que tudo..." },
-      { id: uid(), type: "REFRÃO", chords: ["F", "C", "G", "Dm", "F", "C", "G", "Dm"], repeat: "1X", lyric: "Tu és o mesmo pra sempre..." },
-      { id: uid(), type: "FINAL REFRÃO", chords: ["G", "F", "Am", "G"], repeat: "2X", lyric: "O Teu amor não falha" },
-    ],
-  },
-  {
-    id: "que-ele-cresca",
-    title: "Que Ele Cresça",
-    artist: "Diante do Trono",
-    originalKey: "C",
-    key: "C",
-    bpm: 78,
-    time: "4/4",
-    rhythm: "Adoração",
-    tags: ["Ministração"],
-    createdAt: Date.now() - 86400000 * 2,
-    updatedAt: Date.now() - 7200000,
-    blocks: [
-      { id: uid(), type: "INTRODUÇÃO", chords: ["C", "C9", "C4"], repeat: "2X" },
-      { id: uid(), type: "PARTE 1", chords: ["C", "C9", "C4", "Am", "G", "F"], lyric: "Mais de Ti, e menos de mim..." },
-      { id: uid(), type: "REFRÃO", chords: ["Dm", "F", "Am", "G"], repeat: "1X", lyric: "Que Ele cresça..." },
-      { id: uid(), type: "REFRÃO", chords: ["Dm", "F", "Am", "G"], repeat: "3X", lyric: "Que Ele cresça...", note: "Volta parte 1; na segunda vez o refrão é 3X" },
-      { id: uid(), type: "FINAL", chords: ["Dm", "F", "Am", "G"], repeat: "2X" },
-    ],
-  },
-];
+// NOTE: seed data is built lazily inside a function.
+// Do NOT build this array at module scope — `uid()` calls
+// `crypto.randomUUID()`, which Cloudflare Workers forbid in the global
+// scope (module init). That would crash every SSR render with:
+// "Disallowed operation called within global scope."
+function buildSeed(): Song[] {
+  return [
+    {
+      id: "teu-amor-nao-falha",
+      title: "Teu Amor Não Falha",
+      artist: "Fernandinho",
+      originalKey: "Am",
+      key: "Am",
+      bpm: 74,
+      time: "4/4",
+      rhythm: "Adoração",
+      favorite: true,
+      tags: ["Adoração", "Ministração"],
+      createdAt: Date.now() - 86400000 * 4,
+      updatedAt: Date.now() - 3600000,
+      blocks: [
+        { id: uid(), type: "INTRODUÇÃO", chords: ["Am", "F", "C", "G"], repeat: "2X" },
+        { id: uid(), type: "PARTE 1", chords: ["Am", "F", "C", "G", "Am", "F", "C", "G"], lyric: "Nada vai me separar..." },
+        { id: uid(), type: "REFRÃO", chords: ["F", "C", "G", "Dm", "F", "C", "G", "Dm"], repeat: "1X", lyric: "Tu és o mesmo pra sempre..." },
+        { id: uid(), type: "PARTE 2", chords: ["Am", "F", "C", "G", "Am", "F", "C", "G"], lyric: "Se o vento é forte e profundo o mar..." },
+        { id: uid(), type: "REFRÃO", chords: ["F", "C", "G", "Dm", "F", "C", "G", "Dm"], repeat: "2X", lyric: "Tu és o mesmo pra sempre..." },
+        { id: uid(), type: "PARTE 3", chords: ["F", "Am", "G", "F", "Am", "G"], lyric: "Tu fazes que tudo..." },
+        { id: uid(), type: "REFRÃO", chords: ["F", "C", "G", "Dm", "F", "C", "G", "Dm"], repeat: "1X", lyric: "Tu és o mesmo pra sempre..." },
+        { id: uid(), type: "FINAL REFRÃO", chords: ["G", "F", "Am", "G"], repeat: "2X", lyric: "O Teu amor não falha" },
+      ],
+    },
+    {
+      id: "que-ele-cresca",
+      title: "Que Ele Cresça",
+      artist: "Diante do Trono",
+      originalKey: "C",
+      key: "C",
+      bpm: 78,
+      time: "4/4",
+      rhythm: "Adoração",
+      tags: ["Ministração"],
+      createdAt: Date.now() - 86400000 * 2,
+      updatedAt: Date.now() - 7200000,
+      blocks: [
+        { id: uid(), type: "INTRODUÇÃO", chords: ["C", "C9", "C4"], repeat: "2X" },
+        { id: uid(), type: "PARTE 1", chords: ["C", "C9", "C4", "Am", "G", "F"], lyric: "Mais de Ti, e menos de mim..." },
+        { id: uid(), type: "REFRÃO", chords: ["Dm", "F", "Am", "G"], repeat: "1X", lyric: "Que Ele cresça..." },
+        { id: uid(), type: "REFRÃO", chords: ["Dm", "F", "Am", "G"], repeat: "3X", lyric: "Que Ele cresça...", note: "Volta parte 1; na segunda vez o refrão é 3X" },
+        { id: uid(), type: "FINAL", chords: ["Dm", "F", "Am", "G"], repeat: "2X" },
+      ],
+    },
+  ];
+}
 
 type State = {
   songs: Song[];
@@ -144,7 +151,7 @@ export const useSongStore = create<State>()((set, get) => ({
       createFromSeed: () => {
         const id = uid();
         const now = Date.now();
-        const base = seed[0];
+        const base = buildSeed()[0];
         const song: Song = {
           ...JSON.parse(JSON.stringify(base)),
           id,
