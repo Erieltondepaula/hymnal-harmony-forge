@@ -36,12 +36,11 @@ function formatToneLabel(originalKey: string, currentKey: string) {
   const abs = Math.abs(diff);
   let intervalText = "";
   if (abs > 0) {
-    if (abs % 2 === 0) {
-      const tons = abs / 2;
-      intervalText = `${tons} ${tons === 1 ? "Tom" : "Tons"}`;
-    } else {
-      intervalText = `${abs} ${abs === 1 ? "semitom" : "semitons"}`;
-    }
+    const whole = Math.floor(abs / 2);
+    const half = abs % 2 === 1;
+    if (whole === 0) intervalText = "½ tom";
+    else if (half) intervalText = `${whole}½ tons`;
+    else intervalText = `${whole} ${whole === 1 ? "tom" : "tons"}`;
   }
   return `${originalKey} → ${currentKey}${arrow ? ` ${arrow} ${intervalText}` : ""}`;
 }
