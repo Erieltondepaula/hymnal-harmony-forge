@@ -156,7 +156,9 @@ export const useSongStore = create<State>()(
           createdAt: now,
           updatedAt: now,
           favorite: false,
+          blocksInOriginalKey: true,
         };
+
         set((s) => ({ songs: [song, ...s.songs] }));
         return id;
       },
