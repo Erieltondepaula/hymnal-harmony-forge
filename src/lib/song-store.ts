@@ -136,9 +136,7 @@ function pushHistory(state: State, id: string) {
   state.future[id] = [];
 }
 
-export const useSongStore = create<State>()(
-  persist(
-    (set, get) => ({
+export const useSongStore = create<State>()((set, get) => ({
       songs: seed,
       history: {},
       future: {},
@@ -330,10 +328,5 @@ export const useSongStore = create<State>()(
             history: { ...state.history, [id]: current ? [...past, JSON.parse(JSON.stringify(current))] : past },
           };
         }),
-    }),
-    {
-      name: "mapalouvor-store-v1",
-      partialize: (s) => ({ songs: s.songs }),
-    },
-  ),
-);
+    }));
+
