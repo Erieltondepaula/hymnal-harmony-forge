@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { FilePlus2, Upload, Music2, Clock, Star } from "lucide-react";
 import { useSongStore } from "@/lib/song-store";
+import { usePreferences } from "@/lib/preferences-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
