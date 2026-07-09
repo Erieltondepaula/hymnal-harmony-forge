@@ -29,6 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   useSongSync();
+  usePreferencesSync();
 
   const isAuth = pathname === "/auth";
   const isEditor = pathname.startsWith("/editor/");
