@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 export type Block = {
   id: string;
@@ -137,10 +136,8 @@ function pushHistory(state: State, id: string) {
   state.future[id] = [];
 }
 
-export const useSongStore = create<State>()(
-  persist(
-    (set, get) => ({
-      songs: seed,
+export const useSongStore = create<State>()((set, get) => ({
+      songs: [],
       history: {},
       future: {},
       getSong: (id) => get().songs.find((s) => s.id === id),
@@ -331,10 +328,5 @@ export const useSongStore = create<State>()(
             history: { ...state.history, [id]: current ? [...past, JSON.parse(JSON.stringify(current))] : past },
           };
         }),
-    }),
-    {
-      name: "mapalouvor-store-v1",
-      partialize: (s) => ({ songs: s.songs }),
-    },
-  ),
-);
+    }));
+

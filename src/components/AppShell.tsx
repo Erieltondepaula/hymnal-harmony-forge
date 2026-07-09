@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useSongSync } from "@/lib/song-sync";
+import { usePreferencesSync } from "@/lib/preferences-sync";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   useSongSync();
+  usePreferencesSync();
 
   const isAuth = pathname === "/auth";
   const isEditor = pathname.startsWith("/editor/");
