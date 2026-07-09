@@ -10,6 +10,15 @@ export type Block = {
   note?: string;
 };
 
+export type ShowFlags = {
+  key?: boolean;
+  bpm?: boolean;
+  time?: boolean;
+  rhythm?: boolean;
+  batida?: boolean;
+  capo?: boolean;
+};
+
 export type Song = {
   id: string;
   title: string;
@@ -22,6 +31,8 @@ export type Song = {
   rhythm: string; // "Pop Rock"
   rhythmArrows?: string; // ex: "↓ ↑ ↓ ↑ ↓ ↑ ↓ ↑"
   rhythmCounts?: string; // ex: "1 e 2 e 3 e 4 e"
+  capo?: number; // 0 = sem capotraste; N = casa N
+  show?: ShowFlags;
   favorite?: boolean;
   tags?: string[];
   updatedAt: number;
@@ -29,6 +40,7 @@ export type Song = {
   blocks: Block[];
   note?: string;
 };
+
 
 
 const uid = () =>

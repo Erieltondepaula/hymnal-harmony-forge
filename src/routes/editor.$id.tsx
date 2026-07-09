@@ -28,8 +28,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useSongStore, type Block } from "@/lib/song-store";
-import { transposeAll } from "@/lib/transpose";
+import { useSongStore, type Block, type ShowFlags } from "@/lib/song-store";
+import { smartTransposeAll } from "@/lib/harmonic-field";
+
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { cn } from "@/lib/utils";
 
@@ -154,9 +155,21 @@ function Editor() {
   };
 
   const changeKey = (newKey: string) => {
-    const newBlocks = transposeAll(song.blocks, song.key, newKey);
+    const newBlocks = smartTransposeAll(song.blocks, song.key, newKey);
     update(song.id, { key: newKey, blocks: newBlocks });
   };
+
+  const show: Required<ShowFlags> = {
+    key: song.show?.key ?? true,
+    bpm: song.show?.bpm ?? true,
+    time: song.show?.time ?? true,
+    rhythm: song.show?.rhythm ?? true,
+    batida: song.show?.batida ?? true,
+    capo: song.show?.capo ?? true,
+  };
+  const toggleShow = (k: keyof ShowFlags) =>
+    update(song.id, { show: { ...show, [k]: !show[k] } });
+
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -329,6 +342,32 @@ function Editor() {
                   />
                 </Field>
 
+                <Field label="Capotraste">
+                  <input
+                    type="number"
+                    min={0}
+                    max={12}
+                    value={song.capo ?? 0}
+                    onChange={(e) => update(song.id, { capo: Number(e.target.value) || 0 })}
+                    placeholder="Ex.: 2"
+                    className="input"
+                  />
+                </Field>
+
+                <div className="rounded-xl border border-border bg-background/40 p-3">
+                  <div className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Mostrar no mapa
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <ShowToggle label="Tom" checked={show.key} onChange={() => toggleShow("key")} />
+                    <ShowToggle label="BPM" checked={show.bpm} onChange={() => toggleShow("bpm")} />
+                    <ShowToggle label="Compasso" checked={show.time} onChange={() => toggleShow("time")} />
+                    <ShowToggle label="Ritmo" checked={show.rhythm} onChange={() => toggleShow("rhythm")} />
+                    <ShowToggle label="Batida" checked={show.batida} onChange={() => toggleShow("batida")} />
+                    <ShowToggle label="Capotraste" checked={show.capo} onChange={() => toggleShow("capo")} />
+                  </div>
+                </div>
+
                 <RhythmPatternEditor
                   arrows={song.rhythmArrows ?? ""}
                   counts={song.rhythmCounts ?? ""}
@@ -344,6 +383,7 @@ function Editor() {
                     className="input resize-none"
                   />
                 </Field>
+
               </>
             ) : (
               <BlockProps
@@ -388,7 +428,30 @@ function Editor() {
   );
 }
 
+function ShowToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="h-3.5 w-3.5 accent-primary"
+      />
+      <span className="text-[12px] text-foreground">{label}</span>
+    </label>
+  );
+}
+
 function ToolbarBtn({
+
   children,
   onClick,
   title,

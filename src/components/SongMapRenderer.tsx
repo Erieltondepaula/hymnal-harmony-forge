@@ -29,6 +29,15 @@ function colorFor(chord: string) {
 }
 
 export function SongMapRenderer({ song, className }: { song: Song; className?: string }) {
+  const show = {
+    key: song.show?.key ?? true,
+    bpm: song.show?.bpm ?? true,
+    time: song.show?.time ?? true,
+    rhythm: song.show?.rhythm ?? true,
+    batida: song.show?.batida ?? true,
+    capo: song.show?.capo ?? true,
+  };
+  const hasCapo = show.capo && !!song.capo && song.capo > 0;
   return (
     <div
       className={cn(
@@ -47,22 +56,28 @@ export function SongMapRenderer({ song, className }: { song: Song; className?: s
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[13px] text-neutral-700">
-          <MetaItem label="TOM" value={song.key} />
-          <MetaItem label="BPM" value={`${song.bpm}${song.bpmEstimated ? " (est.)" : ""}`} />
-          <MetaItem label="COMPASSO" value={song.time} />
-          <MetaItem label="RITMO" value={song.rhythm} />
+          {show.key ? <MetaItem label="TOM" value={song.key} /> : null}
+          {hasCapo ? <MetaItem label="CAPOTRASTE" value={`Casa ${song.capo}`} /> : null}
+          {show.bpm ? (
+            <MetaItem label="BPM" value={`${song.bpm}${song.bpmEstimated ? " (est.)" : ""}`} />
+          ) : null}
+          {show.time ? <MetaItem label="COMPASSO" value={song.time} /> : null}
+          {show.rhythm ? <MetaItem label="RITMO" value={song.rhythm} /> : null}
         </div>
 
-        {/* Rhythm pattern */}
-        <div className="mt-3 text-neutral-800">
-          <div className="text-[12px] font-semibold tracking-wider text-neutral-500">RITMO</div>
-          <div className="mt-0.5 whitespace-pre-wrap break-words font-mono text-[14px] leading-6">
-            {song.rhythmArrows?.trim() || "↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓"}
+        {/* Batida (padrão rítmico) */}
+        {show.batida ? (
+          <div className="mt-3 text-neutral-800">
+            <div className="text-[12px] font-semibold tracking-wider text-neutral-500">BATIDA</div>
+            <div className="mt-0.5 whitespace-pre-wrap break-words font-mono text-[14px] leading-6">
+              {song.rhythmArrows?.trim() || "↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓"}
+            </div>
+            <div className="mt-0.5 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-neutral-500">
+              {song.rhythmCounts?.trim() || "1 | 2 | 3 | 4 |"}
+            </div>
           </div>
-          <div className="mt-0.5 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-neutral-500">
-            {song.rhythmCounts?.trim() || "1 | 2 | 3 | 4 |"}
-          </div>
-        </div>
+        ) : null}
+
       </header>
 
       {/* Blocks */}
@@ -111,11 +126,27 @@ export function SongMapRenderer({ song, className }: { song: Song; className?: s
               </div>
 
               {b.lyric ? (
-                <p className="mt-1.5 text-[13px] italic text-neutral-700">{b.lyric}</p>
+                <p className="mt-2 text-[15px] font-medium leading-relaxed text-neutral-900">
+                  {b.lyric}
+                </p>
               ) : null}
               {b.note ? (
-                <p className="mt-0.5 text-[12px] text-neutral-500">OBS: {b.note}</p>
+                <div
+                  className="mt-2 flex items-start gap-2 rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2"
+                  style={{
+                    WebkitPrintColorAdjust: "exact",
+                    printColorAdjust: "exact",
+                  }}
+                >
+                  <span className="text-[13px] font-bold uppercase tracking-wider text-amber-700">
+                    OBS:
+                  </span>
+                  <span className="text-[14px] font-semibold leading-snug text-amber-900">
+                    {b.note}
+                  </span>
+                </div>
               ) : null}
+
             </section>
           );
         })}
