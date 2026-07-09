@@ -342,6 +342,32 @@ function Editor() {
                   />
                 </Field>
 
+                <Field label="Capotraste">
+                  <input
+                    type="number"
+                    min={0}
+                    max={12}
+                    value={song.capo ?? 0}
+                    onChange={(e) => update(song.id, { capo: Number(e.target.value) || 0 })}
+                    placeholder="Ex.: 2"
+                    className="input"
+                  />
+                </Field>
+
+                <div className="rounded-xl border border-border bg-background/40 p-3">
+                  <div className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Mostrar no mapa
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <ShowToggle label="Tom" checked={show.key} onChange={() => toggleShow("key")} />
+                    <ShowToggle label="BPM" checked={show.bpm} onChange={() => toggleShow("bpm")} />
+                    <ShowToggle label="Compasso" checked={show.time} onChange={() => toggleShow("time")} />
+                    <ShowToggle label="Ritmo" checked={show.rhythm} onChange={() => toggleShow("rhythm")} />
+                    <ShowToggle label="Batida" checked={show.batida} onChange={() => toggleShow("batida")} />
+                    <ShowToggle label="Capotraste" checked={show.capo} onChange={() => toggleShow("capo")} />
+                  </div>
+                </div>
+
                 <RhythmPatternEditor
                   arrows={song.rhythmArrows ?? ""}
                   counts={song.rhythmCounts ?? ""}
@@ -357,6 +383,7 @@ function Editor() {
                     className="input resize-none"
                   />
                 </Field>
+
               </>
             ) : (
               <BlockProps
