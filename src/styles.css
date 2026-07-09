@@ -148,6 +148,21 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
+/* Shared form input style */
+.input {
+  width: 100%;
+  background: var(--background);
+  border: 1px solid var(--input);
+  color: var(--foreground);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 180ms;
+}
+.input:focus { border-color: var(--primary); }
+
+
 /* Print: A4 portrait, hide app chrome, only the .print-area is rendered.
    Ensures chord background colors print (print-color-adjust: exact). */
 @media print {
