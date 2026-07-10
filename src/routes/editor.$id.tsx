@@ -327,7 +327,19 @@ function Editor() {
 
         {/* Preview */}
         <main className="overflow-auto bg-[#0b0d12] p-8">
-          <SongMapRenderer song={displaySong} />
+          <div className={cn("flex gap-6", showCircle ? "items-start" : "")}>
+            <div className="flex-1 min-w-0">
+              <SongMapRenderer song={displaySong} />
+            </div>
+            {showCircle ? (
+              <div className="sticky top-0 shrink-0 rounded-2xl border border-border bg-surface p-4 shadow-lg">
+                <HarmonicCircle
+                  currentKey={song.key}
+                  onSelectKey={(k) => changeKey(k)}
+                />
+              </div>
+            ) : null}
+          </div>
         </main>
 
 
