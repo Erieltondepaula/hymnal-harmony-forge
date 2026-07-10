@@ -63,6 +63,7 @@ function Editor() {
   const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [showCircle, setShowCircle] = useState(false);
 
   // Escala o .print-area para caber em UMA folha A4 antes de imprimir.
   const handlePrintFitA4 = () => {
