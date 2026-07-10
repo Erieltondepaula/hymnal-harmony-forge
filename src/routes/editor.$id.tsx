@@ -256,6 +256,19 @@ function Editor() {
             <Redo2 className="h-4 w-4" />
           </ToolbarBtn>
           <div className="mx-2 h-6 w-px bg-border" />
+          <button
+            onClick={() => setShowCircle((v) => !v)}
+            title="Ciclo das Quintas / Quartas"
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition-colors",
+              showCircle
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            <Compass className="h-4 w-4" />
+            Ciclo
+          </button>
           <ToolbarBtn title="Salvar">
             <Save className="h-4 w-4" />
           </ToolbarBtn>
