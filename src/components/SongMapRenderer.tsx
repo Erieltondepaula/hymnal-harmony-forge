@@ -155,33 +155,47 @@ export function SongMapRenderer({ song, className }: { song: Song; className?: s
                 ) : null}
               </div>
 
-              <div
-                className={cn(
-                  "mt-1.5 flex overflow-hidden rounded-md border border-neutral-800",
-                  single ? "w-fit" : "w-full",
-                )}
-              >
-                {b.chords.map((c, i) => {
-                  const color = colorFor(c);
-                  return (
-                    <div
-                      key={i}
-                      className={cn(
-                        "chord-cell px-4 py-1.5 text-center text-[15px] font-semibold text-neutral-900",
-                        !single && "flex-1 min-w-0",
-                        i < b.chords.length - 1 && "border-r border-neutral-800",
-                      )}
-                      style={{
-                        backgroundColor: color.bg,
-                        WebkitPrintColorAdjust: "exact",
-                        printColorAdjust: "exact",
-                      }}
-                    >
-                      {c}
-                    </div>
-                  );
-                })}
-              </div>
+              {(() => {
+                const maxCols = 8;
+                const cols = Math.min(b.chords.length, maxCols);
+                const rows = Math.max(1, Math.ceil(b.chords.length / cols));
+                const dense = b.chords.length > 6;
+                return (
+                  <div
+                    className={cn(
+                      "mt-1.5 grid overflow-hidden rounded-md border border-neutral-800",
+                      single ? "w-fit" : "w-full",
+                    )}
+                    style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+                  >
+                    {b.chords.map((c, i) => {
+                      const color = colorFor(c);
+                      const rowIdx = Math.floor(i / cols);
+                      const colIdx = i % cols;
+                      const isLastColInRow = colIdx === cols - 1 || i === b.chords.length - 1;
+                      const isLastRow = rowIdx === rows - 1;
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            "chord-cell min-w-0 text-center font-semibold text-neutral-900 leading-tight break-all",
+                            dense ? "px-1.5 py-1 text-[13px]" : "px-4 py-1.5 text-[15px]",
+                            !isLastColInRow && "border-r border-neutral-800",
+                            !isLastRow && "border-b border-neutral-800",
+                          )}
+                          style={{
+                            backgroundColor: color.bg,
+                            WebkitPrintColorAdjust: "exact",
+                            printColorAdjust: "exact",
+                          }}
+                        >
+                          {c}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {b.lyric ? (
                 <p className="mt-2 text-[15px] font-medium leading-relaxed text-neutral-900">
