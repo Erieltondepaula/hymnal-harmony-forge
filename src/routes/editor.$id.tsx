@@ -12,6 +12,8 @@ import {
   Copy,
   Trash2,
   Music2,
+  Compass,
+
 } from "lucide-react";
 import {
   DndContext,
