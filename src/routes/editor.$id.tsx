@@ -36,6 +36,7 @@ import { smartTransposeAll, smartTransposeChord, formatKeyInterval } from "@/lib
 
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { cn } from "@/lib/utils";
+import { HarmonicCircle } from "@/components/HarmonicCircle";
 
 export const Route = createFileRoute("/editor/$id")({
   component: Editor,
