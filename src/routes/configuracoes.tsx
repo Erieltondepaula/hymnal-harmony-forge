@@ -223,6 +223,49 @@ function ConfigPage() {
             />
           </Field>
         </Card>
+
+        {/* Cores das cifras */}
+        <Card
+          title="Cores das cifras"
+          desc="Escolha uma cor para cada nota raiz (aparece no mapa e no PDF)"
+        >
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {Object.keys(DEFAULT_CHORD_COLORS).map((note) => {
+              const value = prefs.chordColors[note] || DEFAULT_CHORD_COLORS[note];
+              return (
+                <label
+                  key={note}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-background/40 p-2"
+                >
+                  <span
+                    className="flex h-8 w-10 items-center justify-center rounded-md text-[13px] font-bold text-neutral-900"
+                    style={{ backgroundColor: value }}
+                  >
+                    {note}
+                  </span>
+                  <input
+                    type="color"
+                    value={value}
+                    onChange={(e) =>
+                      set("chordColors", {
+                        ...prefs.chordColors,
+                        [note]: e.target.value,
+                      })
+                    }
+                    className="h-8 w-full cursor-pointer rounded border border-border bg-transparent"
+                  />
+                </label>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => set("chordColors", { ...DEFAULT_CHORD_COLORS })}
+            className="text-[12px] text-primary hover:underline"
+          >
+            ↺ Restaurar cores padrão
+          </button>
+        </Card>
       </div>
     </div>
   );
