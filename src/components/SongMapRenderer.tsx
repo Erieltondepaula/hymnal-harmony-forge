@@ -1,32 +1,20 @@
 import type { Song } from "@/lib/song-store";
-import { usePreferences, pageDimensionsMm } from "@/lib/preferences-store";
+import { usePreferences, pageDimensionsMm, DEFAULT_CHORD_COLORS } from "@/lib/preferences-store";
 import { keyInterval } from "@/lib/harmonic-field";
 import { cn } from "@/lib/utils";
 
-// Soft pastel palette — light backgrounds so black chord text stays legible.
-const CHORD_PALETTE = [
-  { bg: "#FEE2E2", border: "#FCA5A5" },
-  { bg: "#FFEDD5", border: "#FDBA74" },
-  { bg: "#FEF3C7", border: "#FCD34D" },
-  { bg: "#FEF9C3", border: "#FDE047" },
-  { bg: "#ECFCCB", border: "#BEF264" },
-  { bg: "#DCFCE7", border: "#86EFAC" },
-  { bg: "#CCFBF1", border: "#5EEAD4" },
-  { bg: "#CFFAFE", border: "#67E8F9" },
-  { bg: "#DBEAFE", border: "#93C5FD" },
-  { bg: "#E0E7FF", border: "#A5B4FC" },
-  { bg: "#EDE9FE", border: "#C4B5FD" },
-  { bg: "#F3E8FF", border: "#D8B4FE" },
-  { bg: "#FAE8FF", border: "#F0ABFC" },
-  { bg: "#FCE7F3", border: "#F9A8D4" },
-  { bg: "#FFE4E6", border: "#FDA4AF" },
-];
+function rootOf(chord: string): string {
+  const m = chord.trim().match(/^([A-G])([#b])?/);
+  if (!m) return "C";
+  const flatMap: Record<string, string> = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
+  const root = m[1] + (m[2] ?? "");
+  return flatMap[root] ?? root;
+}
 
-function colorFor(chord: string) {
-  const key = chord.trim().replace(/[^A-Ga-g#b]/g, "").slice(0, 2) || chord;
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-  return CHORD_PALETTE[hash % CHORD_PALETTE.length];
+function colorFor(chord: string, palette: Record<string, string>) {
+  const root = rootOf(chord);
+  const bg = palette[root] || DEFAULT_CHORD_COLORS[root] || "#F3F4F6";
+  return { bg };
 }
 
 function formatToneLabel(originalKey: string, currentKey: string) {
