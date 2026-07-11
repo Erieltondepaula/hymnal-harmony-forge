@@ -144,32 +144,34 @@ export function SongMapRenderer({ song, className }: { song: Song; className?: s
               </div>
 
               {(() => {
-                const maxCols = 8;
-                const cols = Math.min(b.chords.length, maxCols);
-                const rows = Math.max(1, Math.ceil(b.chords.length / cols));
-                const dense = b.chords.length > 6;
+                const count = b.chords.length;
+                // Adjust font size + padding so long rows stay on ONE line.
+                const dense =
+                  count >= 12 ? "px-1 py-1 text-[10px]" :
+                  count >= 9  ? "px-1.5 py-1 text-[11px]" :
+                  count >= 7  ? "px-2 py-1 text-[12px]" :
+                                "px-3 py-1.5 text-[15px]";
                 return (
                   <div
                     className={cn(
                       "mt-1.5 grid overflow-hidden rounded-md border border-neutral-800",
                       single ? "w-fit" : "w-full",
                     )}
-                    style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+                    style={{
+                      gridAutoFlow: "column",
+                      gridAutoColumns: "minmax(0, 1fr)",
+                    }}
                   >
                     {b.chords.map((c, i) => {
-                      const color = colorFor(c);
-                      const rowIdx = Math.floor(i / cols);
-                      const colIdx = i % cols;
-                      const isLastColInRow = colIdx === cols - 1 || i === b.chords.length - 1;
-                      const isLastRow = rowIdx === rows - 1;
+                      const color = colorFor(c, prefs.chordColors);
+                      const isLast = i === count - 1;
                       return (
                         <div
                           key={i}
                           className={cn(
-                            "chord-cell min-w-0 text-center font-semibold text-neutral-900 leading-tight break-all",
-                            dense ? "px-1.5 py-1 text-[13px]" : "px-4 py-1.5 text-[15px]",
-                            !isLastColInRow && "border-r border-neutral-800",
-                            !isLastRow && "border-b border-neutral-800",
+                            "chord-cell min-w-0 whitespace-nowrap text-center font-semibold text-neutral-900 leading-tight",
+                            dense,
+                            !isLast && "border-r border-neutral-800",
                           )}
                           style={{
                             backgroundColor: color.bg,
