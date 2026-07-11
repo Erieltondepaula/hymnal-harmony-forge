@@ -55,6 +55,7 @@ export function usePreferencesSync() {
       const merged: Preferences = {
         ...DEFAULT_PREFERENCES,
         ...remote,
+        chordColors: { ...DEFAULT_PREFERENCES.chordColors, ...(remote.chordColors ?? {}) },
         userName: fallbackName,
         userEmail: fallbackEmail,
       };

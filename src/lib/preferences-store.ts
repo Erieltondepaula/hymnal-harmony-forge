@@ -25,6 +25,15 @@ export type Preferences = {
   showPageNumber: boolean;
   showDate: boolean;
   footerText: string;
+
+  // Cores personalizadas dos acordes, por nota raiz (C, C#, D, ...).
+  chordColors: Record<string, string>;
+};
+
+export const DEFAULT_CHORD_COLORS: Record<string, string> = {
+  C: "#FEE2E2", "C#": "#FFEDD5", D: "#FEF3C7", "D#": "#FEF9C3",
+  E: "#ECFCCB", F: "#DCFCE7", "F#": "#CCFBF1", G: "#CFFAFE",
+  "G#": "#DBEAFE", A: "#E0E7FF", "A#": "#EDE9FE", B: "#F3E8FF",
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -46,6 +55,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   showPageNumber: false,
   showDate: false,
   footerText: "Gerado por MapaLouvor",
+
+  chordColors: { ...DEFAULT_CHORD_COLORS },
 };
 
 type State = Preferences & {

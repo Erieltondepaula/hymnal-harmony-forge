@@ -7,6 +7,7 @@ import { useSongStore } from "@/lib/song-store";
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { parseCifra } from "@/lib/ai.functions";
 import { fetchCifraFromUrl } from "@/lib/fetch-cifra.functions";
+import { extractTextFromFile } from "@/lib/file-extract";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/novo")({
@@ -68,7 +69,7 @@ function NewMap() {
         bpmEstimated: parsed.bpmEstimated,
         time: parsed.time,
         rhythm: parsed.rhythm,
-        blocks: parsed.blocks.map((b) => ({
+        blocks: parsed.blocks.map((b: { type: string; chords: string[]; repeat: string | null; lyric: string | null; note: string | null }) => ({
           type: b.type,
           chords: b.chords,
           repeat: b.repeat ?? undefined,
@@ -239,7 +240,7 @@ function NewMap() {
             </p>
           </div>
 
-          <div
+          <label
             onDragOver={(e) => {
               e.preventDefault();
               setDragOver(true);
@@ -249,28 +250,62 @@ function NewMap() {
               e.preventDefault();
               setDragOver(false);
               const file = e.dataTransfer.files?.[0];
-              if (file && file.type.startsWith("text/")) {
-                const content = await file.text();
+              if (!file) return;
+              try {
+                toast.loading("Lendo arquivo...", { id: "file-read" });
+                const content = await extractTextFromFile(file);
+                toast.dismiss("file-read");
+                if (!content.trim()) {
+                  toast.error("Arquivo vazio ou sem texto legível.");
+                  return;
+                }
                 setText(content);
                 toast.success(`Arquivo carregado: ${file.name}`);
-              } else if (file) {
-                toast.info("Para PDF/imagem, cole o texto da cifra abaixo.");
+              } catch (err) {
+                toast.dismiss("file-read");
+                const msg = err instanceof Error ? err.message : String(err);
+                toast.error(`Erro ao ler arquivo: ${msg}`);
               }
             }}
             className={cn(
-              "flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors",
-              dragOver ? "border-primary bg-primary/5" : "border-border bg-card",
+              "flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors",
+              dragOver ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-accent/40",
             )}
             style={{ transitionDuration: "180ms" }}
           >
+            <input
+              type="file"
+              accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                e.currentTarget.value = "";
+                try {
+                  toast.loading("Lendo arquivo...", { id: "file-read" });
+                  const content = await extractTextFromFile(file);
+                  toast.dismiss("file-read");
+                  if (!content.trim()) {
+                    toast.error("Arquivo vazio ou sem texto legível.");
+                    return;
+                  }
+                  setText(content);
+                  toast.success(`Arquivo carregado: ${file.name}`);
+                } catch (err) {
+                  toast.dismiss("file-read");
+                  const msg = err instanceof Error ? err.message : String(err);
+                  toast.error(`Erro ao ler arquivo: ${msg}`);
+                }
+              }}
+            />
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/30">
               <UploadCloud className="h-6 w-6" />
             </div>
-            <div className="mt-3 text-[15px] font-semibold">Arraste um arquivo .txt</div>
+            <div className="mt-3 text-[15px] font-semibold">Arraste um arquivo .txt, .pdf ou .docx</div>
             <div className="mt-1 text-[13px] text-muted-foreground">
-              Ou cole o texto da cifra no campo abaixo
+              Ou clique para escolher — também pode colar o texto abaixo
             </div>
-          </div>
+          </label>
 
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="mb-3 flex items-center gap-2 text-[14px] font-semibold">

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { generateText, Output } from "ai";
+import { generateObject } from "ai";
 import { z } from "zod";
 
 const BlockSchema = z.object({
@@ -59,17 +59,32 @@ export const parseCifra = createServerFn({ method: "POST" })
       .join("\n");
 
     try {
-      const { output } = await generateText({
-        model: gateway("google/gemini-3-flash-preview"),
+      const { object } = await generateObject({
+        model: gateway("google/gemini-2.5-flash"),
         system: SYSTEM,
         prompt,
-        output: Output.object({ schema: SongSchema }),
+        schema: SongSchema,
       });
-      return output;
+      return object;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("429")) throw new Error("Muitas requisições. Tente novamente em instantes.");
       if (msg.includes("402")) throw new Error("Créditos de IA esgotados. Adicione créditos ao workspace.");
+      // Retry once with a stricter model if schema validation failed.
+      if (/schema|object generated|match/i.test(msg)) {
+        try {
+          const { object } = await generateObject({
+            model: gateway("google/gemini-2.5-pro"),
+            system: SYSTEM + "\nResponda SOMENTE o JSON válido conforme o schema.",
+            prompt,
+            schema: SongSchema,
+          });
+          return object;
+        } catch (e2: unknown) {
+          const m2 = e2 instanceof Error ? e2.message : String(e2);
+          throw new Error(`Falha ao analisar cifra: ${m2}`);
+        }
+      }
       throw new Error(`Falha ao analisar cifra: ${msg}`);
     }
   });
