@@ -4,8 +4,7 @@
 async function extractPdf(file: File): Promise<string> {
   const pdfjs: typeof import("pdfjs-dist") = await import("pdfjs-dist");
   // Disable worker: run inline (fine for typical cifra PDFs).
-  // @ts-expect-error — GlobalWorkerOptions exists at runtime.
-  pdfjs.GlobalWorkerOptions.workerSrc = "";
+  (pdfjs as unknown as { GlobalWorkerOptions: { workerSrc: string } }).GlobalWorkerOptions.workerSrc = "";
   const buf = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({
     data: buf,
