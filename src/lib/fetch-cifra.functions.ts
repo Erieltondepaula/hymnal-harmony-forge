@@ -39,8 +39,9 @@ export const fetchCifraFromUrl = createServerFn({ method: "POST" })
       const res = await fetch(url, {
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (compatible; MapaLouvorBot/1.0; +https://lovable.dev)",
-          Accept: "text/html,application/xhtml+xml",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
         },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -50,13 +51,21 @@ export const fetchCifraFromUrl = createServerFn({ method: "POST" })
       throw new Error(`Não foi possível acessar o link: ${msg}`);
     }
 
-    // Cifra Club: cifra vive em <pre>...</pre>. Fallback: primeiro <pre> da página.
+    // Cifra Club: cifra vive em <pre>...</pre>. Alguns templates dividem em
+    // vários <pre> (um por seção) — juntamos todos para não perder trechos.
     const preMatches = Array.from(html.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/gi));
     let cifra = "";
     if (preMatches.length) {
-      // pega o maior <pre> (a cifra costuma ser o maior bloco)
-      preMatches.sort((a, b) => b[1].length - a[1].length);
-      cifra = stripTags(preMatches[0][1]).trim();
+      cifra = preMatches
+        .map((m) => stripTags(m[1]).trim())
+        .filter((t) => t.length > 0)
+        .join("\n\n")
+        .trim();
+    }
+    // Fallback: div com classe "cifra_cnt" ou similar
+    if (!cifra || cifra.length < 20) {
+      const div = html.match(/<div[^>]+class=["'][^"']*cifra[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+      if (div) cifra = stripTags(div[1]).trim();
     }
 
     if (!cifra || cifra.length < 20) {
