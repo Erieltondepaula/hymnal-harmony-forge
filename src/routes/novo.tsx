@@ -68,7 +68,7 @@ function NewMap() {
         bpmEstimated: parsed.bpmEstimated,
         time: parsed.time,
         rhythm: parsed.rhythm,
-        blocks: parsed.blocks.map((b) => ({
+        blocks: parsed.blocks.map((b: { type: string; chords: string[]; repeat: string | null; lyric: string | null; note: string | null }) => ({
           type: b.type,
           chords: b.chords,
           repeat: b.repeat ?? undefined,
