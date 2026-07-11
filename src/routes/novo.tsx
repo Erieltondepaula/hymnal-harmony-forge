@@ -7,6 +7,7 @@ import { useSongStore } from "@/lib/song-store";
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { parseCifra } from "@/lib/ai.functions";
 import { fetchCifraFromUrl } from "@/lib/fetch-cifra.functions";
+import { extractTextFromFile } from "@/lib/file-extract";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/novo")({
