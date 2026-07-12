@@ -13,7 +13,8 @@ function rootOf(chord: string): string {
   return flatMap[root] ?? root;
 }
 
-function colorFor(chord: string, palette: Record<string, string>) {
+function colorFor(chord: string, palette: Record<string, string>, override?: string | null) {
+  if (override) return { bg: override };
   const root = rootOf(chord);
   const bg = palette[root] || DEFAULT_CHORD_COLORS[root] || "#F3F4F6";
   return { bg };
