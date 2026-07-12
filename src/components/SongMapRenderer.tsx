@@ -36,8 +36,9 @@ function formatToneLabel(originalKey: string, currentKey: string) {
   return `${originalKey} → ${currentKey}${arrow ? ` ${arrow} ${intervalText}` : ""}`;
 }
 
-export function SongMapRenderer({ song, className }: { song: Song; className?: string }) {
+export function SongMapRenderer({ song, className, editable = false }: { song: Song; className?: string; editable?: boolean }) {
   const prefs = usePreferences();
+  const updateBlock = useSongStore((s) => s.updateBlock);
   const { w, h } = pageDimensionsMm(prefs);
   const usableW = Math.max(50, w - prefs.marginMm * 2);
 
