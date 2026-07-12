@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Check, RotateCcw } from "lucide-react";
-import { usePreferences, type PageSize, DEFAULT_CHORD_COLORS } from "@/lib/preferences-store";
+import { usePreferences, type PageSize } from "@/lib/preferences-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/configuracoes")({
