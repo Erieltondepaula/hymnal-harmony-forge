@@ -2,21 +2,21 @@
 // PDF/DOCX libs are dynamically imported to keep the initial bundle small.
 
 async function extractPdf(file: File): Promise<string> {
-  const pdfjs: typeof import("pdfjs-dist") = await import("pdfjs-dist");
-  // Disable worker: run inline (fine for typical cifra PDFs).
-  (pdfjs as unknown as { GlobalWorkerOptions: { workerSrc: string } }).GlobalWorkerOptions.workerSrc = "";
+  const pdfjs = await import("pdfjs-dist");
+  // Vite serves the worker as a real URL at build/dev time.
+  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  (pdfjs as unknown as { GlobalWorkerOptions: { workerSrc: string } }).GlobalWorkerOptions.workerSrc = workerUrl;
+
   const buf = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({
     data: buf,
-    disableWorker: true,
     isEvalSupported: false,
   } as never).promise;
+
   const parts: string[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
-    // Reconstruct rows: group by "transform"[5] (y position) so cifras
-    // com acordes acima da letra permaneçam alinhadas.
     const rows = new Map<number, { x: number; str: string }[]>();
     for (const item of content.items as Array<{ str: string; transform: number[] }>) {
       const y = Math.round((item.transform?.[5] ?? 0) * 10) / 10;
@@ -59,6 +59,5 @@ export async function extractTextFromFile(file: File): Promise<string> {
   ) {
     return extractDocx(file);
   }
-  // Default: treat as text.
   return await file.text();
 }

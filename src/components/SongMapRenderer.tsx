@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import type { Song } from "@/lib/song-store";
+import { useSongStore } from "@/lib/song-store";
 import { usePreferences, pageDimensionsMm, DEFAULT_CHORD_COLORS } from "@/lib/preferences-store";
 import { keyInterval } from "@/lib/harmonic-field";
 import { cn } from "@/lib/utils";
@@ -11,7 +13,8 @@ function rootOf(chord: string): string {
   return flatMap[root] ?? root;
 }
 
-function colorFor(chord: string, palette: Record<string, string>) {
+function colorFor(chord: string, palette: Record<string, string>, override?: string | null) {
+  if (override) return { bg: override };
   const root = rootOf(chord);
   const bg = palette[root] || DEFAULT_CHORD_COLORS[root] || "#F3F4F6";
   return { bg };
@@ -33,8 +36,9 @@ function formatToneLabel(originalKey: string, currentKey: string) {
   return `${originalKey} → ${currentKey}${arrow ? ` ${arrow} ${intervalText}` : ""}`;
 }
 
-export function SongMapRenderer({ song, className }: { song: Song; className?: string }) {
+export function SongMapRenderer({ song, className, editable = false }: { song: Song; className?: string; editable?: boolean }) {
   const prefs = usePreferences();
+  const updateBlock = useSongStore((s) => s.updateBlock);
   const { w, h } = pageDimensionsMm(prefs);
   const usableW = Math.max(50, w - prefs.marginMm * 2);
 
@@ -163,24 +167,30 @@ export function SongMapRenderer({ song, className }: { song: Song; className?: s
                     }}
                   >
                     {b.chords.map((c, i) => {
-                      const color = colorFor(c, prefs.chordColors);
+                      const override = b.chordColors?.[i] ?? null;
+                      const color = colorFor(c, prefs.chordColors, override);
                       const isLast = i === count - 1;
                       return (
-                        <div
+                        <ChordCell
                           key={i}
-                          className={cn(
-                            "chord-cell min-w-0 whitespace-nowrap text-center font-semibold text-neutral-900 leading-tight",
-                            dense,
-                            !isLast && "border-r border-neutral-800",
-                          )}
-                          style={{
-                            backgroundColor: color.bg,
-                            WebkitPrintColorAdjust: "exact",
-                            printColorAdjust: "exact",
+                          chord={c}
+                          bg={color.bg}
+                          dense={dense}
+                          isLast={isLast}
+                          editable={editable}
+                          onChangeColor={(hex) => {
+                            const next = [...(b.chordColors ?? [])];
+                            while (next.length < b.chords.length) next.push(null);
+                            next[i] = hex;
+                            updateBlock(song.id, b.id, { chordColors: next });
                           }}
-                        >
-                          {c}
-                        </div>
+                          onClearColor={() => {
+                            if (!b.chordColors) return;
+                            const next = [...b.chordColors];
+                            next[i] = null;
+                            updateBlock(song.id, b.id, { chordColors: next });
+                          }}
+                        />
                       );
                     })}
                   </div>
@@ -231,6 +241,62 @@ function MetaItem({ label, value }: { label: string; value: string }) {
         {label}
       </span>
       <span className="text-[15px] font-semibold text-neutral-900">{value}</span>
+    </div>
+  );
+}
+
+function ChordCell({
+  chord,
+  bg,
+  dense,
+  isLast,
+  editable,
+  onChangeColor,
+  onClearColor,
+}: {
+  chord: string;
+  bg: string;
+  dense: string;
+  isLast: boolean;
+  editable: boolean;
+  onChangeColor: (hex: string) => void;
+  onClearColor: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  return (
+    <div
+      className={cn(
+        "chord-cell group relative min-w-0 whitespace-nowrap text-center font-semibold text-neutral-900 leading-tight",
+        dense,
+        !isLast && "border-r border-neutral-800",
+        editable && "cursor-pointer",
+      )}
+      style={{
+        backgroundColor: bg,
+        WebkitPrintColorAdjust: "exact",
+        printColorAdjust: "exact",
+      }}
+      onClick={editable ? () => inputRef.current?.click() : undefined}
+      onContextMenu={
+        editable
+          ? (e) => {
+              e.preventDefault();
+              onClearColor();
+            }
+          : undefined
+      }
+      title={editable ? "Clique para mudar a cor · botão direito para restaurar" : undefined}
+    >
+      {chord}
+      {editable ? (
+        <input
+          ref={inputRef}
+          type="color"
+          className="pointer-events-none absolute inset-0 h-0 w-0 opacity-0 print:hidden"
+          onChange={(e) => onChangeColor(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : null}
     </div>
   );
 }

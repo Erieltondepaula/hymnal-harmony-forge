@@ -36,18 +36,25 @@ export const fetchCifraFromUrl = createServerFn({ method: "POST" })
 
     let html: string;
     try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 20000);
       const res = await fetch(url, {
+        signal: ctrl.signal,
+        redirect: "follow",
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
         },
-      });
+      }).finally(() => clearTimeout(timer));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       html = await res.text();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("abort")) {
+        throw new Error("O site demorou muito para responder. Tente novamente ou cole a cifra manualmente.");
+      }
       throw new Error(`Não foi possível acessar o link: ${msg}`);
     }
 
