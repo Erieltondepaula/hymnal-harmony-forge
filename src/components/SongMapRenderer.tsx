@@ -167,24 +167,30 @@ export function SongMapRenderer({ song, className, editable = false }: { song: S
                     }}
                   >
                     {b.chords.map((c, i) => {
-                      const color = colorFor(c, prefs.chordColors);
+                      const override = b.chordColors?.[i] ?? null;
+                      const color = colorFor(c, prefs.chordColors, override);
                       const isLast = i === count - 1;
                       return (
-                        <div
+                        <ChordCell
                           key={i}
-                          className={cn(
-                            "chord-cell min-w-0 whitespace-nowrap text-center font-semibold text-neutral-900 leading-tight",
-                            dense,
-                            !isLast && "border-r border-neutral-800",
-                          )}
-                          style={{
-                            backgroundColor: color.bg,
-                            WebkitPrintColorAdjust: "exact",
-                            printColorAdjust: "exact",
+                          chord={c}
+                          bg={color.bg}
+                          dense={dense}
+                          isLast={isLast}
+                          editable={editable}
+                          onChangeColor={(hex) => {
+                            const next = [...(b.chordColors ?? [])];
+                            while (next.length < b.chords.length) next.push(null);
+                            next[i] = hex;
+                            updateBlock(song.id, b.id, { chordColors: next });
                           }}
-                        >
-                          {c}
-                        </div>
+                          onClearColor={() => {
+                            if (!b.chordColors) return;
+                            const next = [...b.chordColors];
+                            next[i] = null;
+                            updateBlock(song.id, b.id, { chordColors: next });
+                          }}
+                        />
                       );
                     })}
                   </div>
