@@ -244,3 +244,60 @@ function MetaItem({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function ChordCell({
+  chord,
+  bg,
+  dense,
+  isLast,
+  editable,
+  onChangeColor,
+  onClearColor,
+}: {
+  chord: string;
+  bg: string;
+  dense: string;
+  isLast: boolean;
+  editable: boolean;
+  onChangeColor: (hex: string) => void;
+  onClearColor: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  return (
+    <div
+      className={cn(
+        "chord-cell group relative min-w-0 whitespace-nowrap text-center font-semibold text-neutral-900 leading-tight",
+        dense,
+        !isLast && "border-r border-neutral-800",
+        editable && "cursor-pointer",
+      )}
+      style={{
+        backgroundColor: bg,
+        WebkitPrintColorAdjust: "exact",
+        printColorAdjust: "exact",
+      }}
+      onClick={editable ? () => inputRef.current?.click() : undefined}
+      onContextMenu={
+        editable
+          ? (e) => {
+              e.preventDefault();
+              onClearColor();
+            }
+          : undefined
+      }
+      title={editable ? "Clique para mudar a cor · botão direito para restaurar" : undefined}
+    >
+      {chord}
+      {editable ? (
+        <input
+          ref={inputRef}
+          type="color"
+          className="pointer-events-none absolute inset-0 h-0 w-0 opacity-0 print:hidden"
+          onChange={(e) => onChangeColor(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : null}
+    </div>
+  );
+}
+}
