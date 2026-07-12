@@ -6,7 +6,6 @@ const FIFTHS         = ["C", "G", "D", "A", "E", "B", "F#", "C#", "G#", "D#", "A
 const FIFTHS_LABELS  = ["C", "G", "D", "A", "E", "B", "F#/Gb", "Db", "Ab", "Eb", "Bb", "F"];
 const FIFTHS_MINORS  = ["Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "A#m", "Fm", "Cm", "Gm", "Dm"];
 const FIFTHS_MINOR_LABELS = ["Am", "Em", "Bm", "F#m", "C#m", "G#m", "Ebm", "Bbm", "Fm", "Cm", "Gm", "Dm"];
-// Diminished (vii°) — one semitone below each major root (leading tone).
 const FIFTHS_DIM     = ["Bdim", "F#dim", "C#dim", "G#dim", "D#dim", "A#dim", "Fdim", "Cdim", "Gdim", "Ddim", "Adim", "Edim"];
 const FIFTHS_DIM_LABELS = ["B°", "F#°", "C#°", "G#°", "D#°", "A#°", "F°", "C°", "G°", "D°", "A°", "E°"];
 
@@ -24,6 +23,17 @@ function normalize(k: string): string {
   const r = map[root] ?? root;
   return isMinor ? r + "m" : r;
 }
+
+// Degree colors — from tonic outward through the diatonic field.
+const DEG_COLORS = {
+  I:   "hsl(var(--primary))",
+  ii:  "hsl(174 62% 47% / 0.65)",
+  iii: "hsl(142 55% 45% / 0.60)",
+  IV:  "hsl(217 91% 60% / 0.65)",
+  V:   "hsl(0 72% 51% / 0.65)",
+  vi:  "hsl(280 60% 55% / 0.65)",
+  vii: "hsl(43 96% 56% / 0.75)",
+} as const;
 
 export function HarmonicCircle({
   currentKey,
@@ -49,25 +59,33 @@ export function HarmonicCircle({
     ? majors[minors.indexOf(currentNorm)] ?? majors[0]
     : currentNorm;
   const idx = Math.max(0, majors.indexOf(currentMajor));
-  const ivIdx = mode === "fifths" ? (idx + 11) % 12 : (idx + 1) % 12;
-  const vIdx  = mode === "fifths" ? (idx + 1) % 12  : (idx + 11) % 12;
-  const viiIdx = idx; // diminished sits at same angular position as the tonic
+  // Diatonic positions relative to major tonic (works for both cycles by
+  // using +1/-1 in fifths and inverted for fourths).
+  const step = mode === "fifths" ? 1 : -1;
+  const IV_i  = (idx - step + 12) % 12;
+  const V_i   = (idx + step + 12) % 12;
+  const I_i   = idx;
+  const vi_i  = idx;
+  const ii_i  = (idx - step + 12) % 12;   // same angular pos as IV
+  const iii_i = (idx + step + 12) % 12;   // same angular pos as V
+  const vii_i = idx;
 
   const size = 360;
   const cx = size / 2;
   const cy = size / 2;
-  const rOuter = 170; // major ring outer
-  const rMid1  = 128; // major/minor boundary
-  const rMid2  = 92;  // minor/dim boundary
-  const rInner = 58;  // dim inner edge
+  // Rings (outer → inner): DIMINISHED, MINORS, MAJORS
+  const rOuter = 170;
+  const rMid1  = 128; // dim / minor boundary
+  const rMid2  = 92;  // minor / major boundary
+  const rInner = 58;  // major inner edge
   const rCenter = 40;
 
   const segments = useMemo(() => {
-    const step = (2 * Math.PI) / 12;
+    const s = (2 * Math.PI) / 12;
     return Array.from({ length: 12 }, (_, i) => {
-      const a0 = -Math.PI / 2 + (i - 0.5) * step;
-      const a1 = -Math.PI / 2 + (i + 0.5) * step;
-      const midA = -Math.PI / 2 + i * step;
+      const a0 = -Math.PI / 2 + (i - 0.5) * s;
+      const a1 = -Math.PI / 2 + (i + 0.5) * s;
+      const midA = -Math.PI / 2 + i * s;
       return { a0, a1, midA };
     });
   }, []);
@@ -85,15 +103,19 @@ export function HarmonicCircle({
   };
 
   const colorFor = (i: number, ring: "M" | "m" | "d") => {
-    // Highlight the current key + its diatonic siblings.
-    if (ring === "M" && i === idx && !currentIsMinor) return "hsl(var(--primary))";
-    if (ring === "m" && i === idx && currentIsMinor) return "hsl(var(--primary))";
-    if (ring === "M" && i === ivIdx) return "hsl(217 91% 60% / 0.55)"; // IV
-    if (ring === "M" && i === vIdx)  return "hsl(0 72% 51% / 0.55)";   // V
-    if (ring === "m" && i === idx && !currentIsMinor) return "hsl(280 60% 55% / 0.55)"; // vi
-    if (ring === "d" && i === viiIdx) return "hsl(43 96% 56% / 0.6)"; // vii°
-    if (ring === "M") return "hsl(var(--muted) / 0.75)";
-    if (ring === "m") return "hsl(var(--muted) / 0.5)";
+    if (ring === "M") {
+      if (i === I_i)  return DEG_COLORS.I;
+      if (i === IV_i) return DEG_COLORS.IV;
+      if (i === V_i)  return DEG_COLORS.V;
+      return "hsl(var(--muted) / 0.75)";
+    }
+    if (ring === "m") {
+      if (i === vi_i)  return DEG_COLORS.vi;
+      if (i === ii_i)  return DEG_COLORS.ii;
+      if (i === iii_i) return DEG_COLORS.iii;
+      return "hsl(var(--muted) / 0.5)";
+    }
+    if (i === vii_i) return DEG_COLORS.vii;
     return "hsl(var(--muted) / 0.3)";
   };
 
@@ -158,12 +180,12 @@ export function HarmonicCircle({
       </div>
 
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-sm">
-        {/* Outer ring: MAJORS */}
-        {renderRing(rMid1, rOuter, majorLabels, majors, "M", 14, 700, "M")}
+        {/* Outer ring: DIMINISHED (vii°) */}
+        {renderRing(rMid1, rOuter, dimLabels, dims, "d", 11, 700, "d")}
         {/* Middle ring: MINORS */}
         {renderRing(rMid2, rMid1, minorLabels, minors, "m", 12, 600, "m")}
-        {/* Inner ring: DIMINISHED */}
-        {renderRing(rInner, rMid2, dimLabels, dims, "d", 11, 700, "d")}
+        {/* Inner ring: MAJORS */}
+        {renderRing(rInner, rMid2, majorLabels, majors, "M", 13, 700, "M")}
 
         {/* Center */}
         <circle cx={cx} cy={cy} r={rCenter} fill="hsl(var(--surface))" stroke="hsl(var(--border))" />
@@ -192,11 +214,13 @@ export function HarmonicCircle({
       </svg>
 
       <div className="grid w-full grid-cols-2 gap-1.5 text-[11px]">
-        <Legend color="hsl(var(--primary))" label="I (Tônica)" />
-        <Legend color="hsl(217 91% 60% / 0.55)" label="IV (Subdom.)" />
-        <Legend color="hsl(0 72% 51% / 0.55)" label="V (Dominante)" />
-        <Legend color="hsl(280 60% 55% / 0.55)" label="vi (rel. menor)" />
-        <Legend color="hsl(43 96% 56% / 0.6)" label="vii° (diminuto)" />
+        <Legend color={DEG_COLORS.I}   label="I (Tônica)" />
+        <Legend color={DEG_COLORS.ii}  label="ii (Supertônica)" />
+        <Legend color={DEG_COLORS.iii} label="iii (Mediante)" />
+        <Legend color={DEG_COLORS.IV}  label="IV (Subdom.)" />
+        <Legend color={DEG_COLORS.V}   label="V (Dominante)" />
+        <Legend color={DEG_COLORS.vi}  label="vi (Rel. menor)" />
+        <Legend color={DEG_COLORS.vii} label="vii° (Diminuto)" />
       </div>
 
       <p className="text-center text-[11px] leading-snug text-muted-foreground">
