@@ -300,4 +300,3 @@ function ChordCell({
     </div>
   );
 }
-}
