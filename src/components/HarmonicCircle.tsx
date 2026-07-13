@@ -1,27 +1,33 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
-// Fifths clockwise from C.
+// Circle labels show both enharmonic spellings for accidentals.
+// Values keep common song-chart spellings so transposition still receives C#/Db style keys.
 const FIFTHS         = ["C", "G", "D", "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F"];
-const FIFTHS_LABELS  = ["C", "G", "D", "A", "E", "B", "F#/Gb", "Db", "Ab", "Eb", "Bb", "F"];
+const FIFTHS_LABELS  = ["C", "G", "D", "A", "E", "B/Cb", "F#/Gb", "C#/Db", "G#/Ab", "D#/Eb", "A#/Bb", "F"];
 const FIFTHS_MINORS  = ["Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "A#m", "Fm", "Cm", "Gm", "Dm"];
-const FIFTHS_MINOR_LABELS = ["Am", "Em", "Bm", "F#m", "C#m", "G#m", "Ebm", "Bbm", "Fm", "Cm", "Gm", "Dm"];
+const FIFTHS_MINOR_LABELS = ["Am", "Em", "Bm", "F#m", "C#m", "G#m/Abm", "D#m/Ebm", "A#m/Bbm", "E#m/Fm", "Cm", "Gm", "Dm"];
 const FIFTHS_DIM     = ["Bdim", "F#dim", "C#dim", "G#dim", "D#dim", "A#dim", "Fdim", "Cdim", "Gdim", "Ddim", "Adim", "Edim"];
-const FIFTHS_DIM_LABELS = ["B°", "F#°", "C#°", "G#°", "D#°", "A#°", "F°", "C°", "G°", "D°", "A°", "E°"];
+const FIFTHS_DIM_LABELS = ["B°", "F#°/Gb°", "C#°/Db°", "G#°/Ab°", "D#°/Eb°", "A#°/Bb°", "E#°/F°", "C°", "G°", "D°", "A°", "E°"];
 
-const FOURTHS               = [...FIFTHS].reverse();
-const FOURTHS_LABELS        = [...FIFTHS_LABELS].reverse();
-const FOURTHS_MINORS        = [...FIFTHS_MINORS].reverse();
-const FOURTHS_MINOR_LABELS  = [...FIFTHS_MINOR_LABELS].reverse();
-const FOURTHS_DIM           = [...FIFTHS_DIM].reverse();
-const FOURTHS_DIM_LABELS    = [...FIFTHS_DIM_LABELS].reverse();
+// Fourths clockwise from C, using flat spellings first on the flat side.
+const FOURTHS               = ["C", "F", "Bb", "Eb", "Ab", "Db", "Gb", "B", "E", "A", "D", "G"];
+const FOURTHS_LABELS        = ["C", "F", "Bb/A#", "Eb/D#", "Ab/G#", "Db/C#", "Gb/F#", "Cb/B", "E", "A", "D", "G"];
+const FOURTHS_MINORS        = ["Am", "Dm", "Gm", "Cm", "Fm", "Bbm", "Ebm", "G#m", "C#m", "F#m", "Bm", "Em"];
+const FOURTHS_MINOR_LABELS  = ["Am", "Dm", "Gm", "Cm", "Fm", "Bbm/A#m", "Ebm/D#m", "Abm/G#m", "C#m", "F#m", "Bm", "Em"];
+const FOURTHS_DIM           = ["Bdim", "Edim", "Adim", "Ddim", "Gdim", "Cdim", "Fdim", "A#dim", "D#dim", "G#dim", "C#dim", "F#dim"];
+const FOURTHS_DIM_LABELS    = ["B°", "E°", "A°", "D°", "G°", "C°", "F°/E#°", "Bb°/A#°", "Eb°/D#°", "Ab°/G#°", "Db°/C#°", "Gb°/F#°"];
 
 function normalize(k: string): string {
   const isMinor = k.endsWith("m");
   const root = isMinor ? k.slice(0, -1) : k;
-  const map: Record<string, string> = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
+  const map: Record<string, string> = { Cb: "B", Db: "C#", Eb: "D#", Fb: "E", Gb: "F#", Ab: "G#", Bb: "A#", "E#": "F", "B#": "C" };
   const r = map[root] ?? root;
   return isMinor ? r + "m" : r;
+}
+
+function accidentalLabel(label: string) {
+  return label.replace(/#/g, "♯").replace(/b/g, "♭");
 }
 
 // Degree colors — from tonic outward through the diatonic field.
@@ -55,10 +61,10 @@ export function HarmonicCircle({
 
   const currentNorm = normalize(currentKey);
   const currentIsMinor = currentNorm.endsWith("m");
-  const currentMajor = currentIsMinor
-    ? majors[minors.indexOf(currentNorm)] ?? majors[0]
-    : currentNorm;
-  const idx = Math.max(0, majors.indexOf(currentMajor));
+  const rawIdx = currentIsMinor
+    ? minors.findIndex((k) => normalize(k) === currentNorm)
+    : majors.findIndex((k) => normalize(k) === currentNorm);
+  const idx = Math.max(0, rawIdx);
   // Diatonic positions relative to major tonic (works for both cycles by
   // using +1/-1 in fifths and inverted for fourths).
   const step = mode === "fifths" ? 1 : -1;
@@ -132,13 +138,16 @@ export function HarmonicCircle({
     fontSize: number,
     weight: number,
     keyPrefix: string,
+    targetKeys = chords,
   ) =>
     segments.map((s, i) => {
       const midR = (r1 + r2) / 2;
       const tx = cx + midR * Math.cos(s.midA);
       const ty = cy + midR * Math.sin(s.midA);
+      const labelParts = labels[i].split("/").map(accidentalLabel);
+      const labelFontSize = labelParts.length > 1 ? Math.max(9, fontSize - 2) : fontSize;
       return (
-        <g key={`${keyPrefix}${i}`} className="cursor-pointer" onClick={() => onSelectKey(chords[i])}>
+        <g key={`${keyPrefix}${i}`} className="cursor-pointer" onClick={() => onSelectKey(targetKeys[i])}>
           <path
             d={arc(r1, r2, s.a0, s.a1)}
             fill={colorFor(i, ring)}
@@ -151,10 +160,18 @@ export function HarmonicCircle({
             textAnchor="middle"
             dominantBaseline="central"
             className="fill-foreground pointer-events-none select-none"
-            fontSize={fontSize}
+            fontSize={labelFontSize}
             fontWeight={weight}
           >
-            {labels[i]}
+            {labelParts.length === 1 ? (
+              labelParts[0]
+            ) : (
+              labelParts.map((part, partIndex) => (
+                <tspan key={part} x={tx} dy={partIndex === 0 ? "-0.38em" : "1.05em"}>
+                  {part}
+                </tspan>
+              ))
+            )}
           </text>
         </g>
       );
@@ -185,7 +202,7 @@ export function HarmonicCircle({
 
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-sm">
         {/* Outer ring: DIMINISHED (vii°) */}
-        {renderRing(rMid1, rOuter, dimLabels, dims, "d", 11, 700, "d")}
+        {renderRing(rMid1, rOuter, dimLabels, dims, "d", 11, 700, "d", majors)}
         {/* Middle ring: MINORS */}
         {renderRing(rMid2, rMid1, minorLabels, minors, "m", 12, 600, "m")}
         {/* Inner ring: MAJORS */}
