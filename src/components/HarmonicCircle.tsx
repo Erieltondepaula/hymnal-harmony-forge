@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 
 // Circle labels show both enharmonic spellings for accidentals.
 // Values keep common song-chart spellings so transposition still receives C#/Db style keys.
-const FIFTHS         = ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F"];
+const FIFTHS         = ["C", "G", "D", "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F"];
 const FIFTHS_LABELS  = ["C", "G", "D", "A", "E", "B/Cb", "F#/Gb", "C#/Db", "G#/Ab", "D#/Eb", "A#/Bb", "F"];
-const FIFTHS_MINORS  = ["Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "Bbm", "Fm", "Cm", "Gm", "Dm"];
+const FIFTHS_MINORS  = ["Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "A#m", "Fm", "Cm", "Gm", "Dm"];
 const FIFTHS_MINOR_LABELS = ["Am", "Em", "Bm", "F#m", "C#m", "G#m/Abm", "D#m/Ebm", "A#m/Bbm", "E#m/Fm", "Cm", "Gm", "Dm"];
 const FIFTHS_DIM     = ["Bdim", "F#dim", "C#dim", "G#dim", "D#dim", "A#dim", "Fdim", "Cdim", "Gdim", "Ddim", "Adim", "Edim"];
 const FIFTHS_DIM_LABELS = ["B°", "F#°/Gb°", "C#°/Db°", "G#°/Ab°", "D#°/Eb°", "A#°/Bb°", "E#°/F°", "C°", "G°", "D°", "A°", "E°"];
