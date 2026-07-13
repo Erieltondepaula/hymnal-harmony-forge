@@ -65,9 +65,13 @@ export function HarmonicCircle({
   const IV_i  = (idx - step + 12) % 12;
   const V_i   = (idx + step + 12) % 12;
   const I_i   = idx;
-  const vi_i  = idx;
+  // Visual layout (harmonic wheel):
+  //   iii sits at the same angular position as I (central/superior),
+  //   vi  sits at the same angular position as V (superior externa).
+  // Example (tom G): iii = Bm, vi = Em.
+  const iii_i = idx;
+  const vi_i  = (idx + step + 12) % 12;
   const ii_i  = (idx - step + 12) % 12;   // same angular pos as IV
-  const iii_i = (idx + step + 12) % 12;   // same angular pos as V
   const vii_i = idx;
 
   const size = 360;
