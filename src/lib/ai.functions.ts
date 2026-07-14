@@ -8,20 +8,6 @@ const ParseInput = z.object({
   artistHint: z.string().optional(),
 });
 
-const SYSTEM = `Você é um analisador musical especialista em cifras de louvor em português.
-Receba uma cifra bruta (com acordes e letra) e devolva um MAPA MUSICAL compacto em JSON.
-
-Regras:
-- Identifique o TOM original com precisão (analise o acorde final/central e a tonalidade da harmonia).
-- Estime o BPM se não estiver explícito.
-- Divida em blocos: INTRODUÇÃO, PARTE 1, PARTE 2, REFRÃO, PONTE, SOLO, FINAL, FINAL REFRÃO.
-- Consolide repetições: se a mesma seção se repete, use 'repeat' como '2X', '3X'.
-- Acordes: preserve formato original (Am, F, C/E, G7M, Dm9, etc.), sem espaços.
-- Letra: inclua apenas a PRIMEIRA linha de cada seção como 'lyric' (identificação visual).
-- Retorne SEM comentários, apenas o JSON estruturado.
-- O JSON deve ter exatamente: title, artist, originalKey, bpm, bpmEstimated, time, rhythm, blocks.
-- Cada bloco deve ter: type, chords(array de strings), repeat(null ou string), lyric(null ou string), note(null ou string).`;
-
 export const parseCifra = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ParseInput.parse(input))
   .handler(async ({ data }) => {
@@ -40,6 +26,10 @@ export const parseCifra = createServerFn({ method: "POST" })
 
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
     const gateway = createLovableAiGatewayProvider(key);
+    const system = `Você é um analisador musical especialista em cifras de louvor em português.
+Receba uma cifra bruta (com acordes e letra) e devolva um MAPA MUSICAL compacto em JSON.
+Retorne SEM comentários, apenas JSON válido com: title, artist, originalKey, bpm, bpmEstimated, time, rhythm, blocks.
+Cada bloco deve ter: type, chords(array de strings), repeat(null ou string), lyric(null ou string), note(null ou string).`;
 
     const prompt = [
       data.titleHint ? `Título fornecido pelo usuário: ${data.titleHint}` : null,
@@ -54,7 +44,7 @@ export const parseCifra = createServerFn({ method: "POST" })
     try {
       const { text } = await generateText({
         model: gateway("google/gemini-3-flash-preview"),
-        system: SYSTEM,
+        system,
         prompt,
         temperature: 0,
         maxOutputTokens: 3500,

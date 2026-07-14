@@ -5,39 +5,16 @@ const Input = z.object({
   url: z.string().url(),
 });
 
-function decodeEntities(s: string) {
-  return s
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)));
-}
-
-function stripTags(html: string) {
-  return decodeEntities(html.replace(/<[^>]+>/g, ""));
-}
-
-function extractMeta(html: string, prop: string): string | undefined {
-  const re = new RegExp(
-    `<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`,
-    "i",
-  );
-  const m = html.match(re);
-  return m ? decodeEntities(m[1]) : undefined;
-}
-
 export const fetchCifraFromUrl = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => Input.parse(raw))
   .handler(async ({ data }) => {
+    const { decodeEntities, extractMeta, stripTags } = await import("./fetch-cifra-utils");
     const url = data.url.trim();
 
     let html: string;
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 20000);
+      const timer = setTimeout(() => ctrl.abort(), 12000);
       const res = await fetch(url, {
         signal: ctrl.signal,
         redirect: "follow",
@@ -52,7 +29,7 @@ export const fetchCifraFromUrl = createServerFn({ method: "POST" })
       html = await res.text();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("abort")) {
+      if (/abort|aborted|AbortError/i.test(msg)) {
         throw new Error("O site demorou muito para responder. Tente novamente ou cole a cifra manualmente.");
       }
       throw new Error(`Não foi possível acessar o link: ${msg}`);
@@ -71,13 +48,16 @@ export const fetchCifraFromUrl = createServerFn({ method: "POST" })
     }
     // Fallback: div com classe "cifra_cnt" ou similar
     if (!cifra || cifra.length < 20) {
-      const div = html.match(/<div[^>]+class=["'][^"']*cifra[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+      const div =
+        html.match(/<div[^>]+class=["'][^"']*cifra_cnt[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) ??
+        html.match(/<div[^>]+class=["'][^"']*cifra[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) ??
+        html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
       if (div) cifra = stripTags(div[1]).trim();
     }
 
     if (!cifra || cifra.length < 20) {
       throw new Error(
-        "Não encontrei a cifra nesta página. Copie e cole o texto manualmente.",
+        "Não encontrei a cifra nesse link. Confira se é a página da música no Cifra Club ou cole a cifra manualmente.",
       );
     }
 
