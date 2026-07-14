@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { UploadCloud, FileText, Loader2, CheckCircle2, Sparkles, Link2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { useSongStore } from "@/lib/song-store";
+import { useSongStore, type Song } from "@/lib/song-store";
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { parseCifra } from "@/lib/ai.functions";
 import { fetchCifraFromUrl } from "@/lib/fetch-cifra.functions";
 import { extractTextFromFile } from "@/lib/file-extract";
+import { parseCifraLocally, type ParsedCifraSong } from "@/lib/cifra-parser";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/novo")({
@@ -23,6 +24,48 @@ const stages = [
   "Montando mapa...",
 ];
 
+const samplePreview = `Tom: G
+
+[Intro] G  C/G  Em7  G/B  C9
+
+[Primeira Parte]
+G        D/F#       Em7
+Minha vida está em Ti
+
+[Refrão]
+C9       G/B      Am7      D
+Teu amor me encontrou`;
+
+function toPreviewSong(parsed: ParsedCifraSong, id = "preview-novo"): Song {
+  return {
+    id,
+    title: parsed.title || "Nova Música",
+    artist: parsed.artist || "",
+    originalKey: parsed.originalKey || "C",
+    key: parsed.originalKey || "C",
+    bpm: parsed.bpm || 72,
+    bpmEstimated: parsed.bpmEstimated,
+    time: parsed.time || "4/4",
+    rhythm: parsed.rhythm || "Adoração",
+    createdAt: 0,
+    updatedAt: 0,
+    blocksInOriginalKey: true,
+    blocks: parsed.blocks.map((block, index) => ({
+      id: `${id}-${index}`,
+      type: block.type,
+      chords: block.chords,
+      repeat: block.repeat ?? undefined,
+      lyric: block.lyric ?? undefined,
+      note: block.note ?? undefined,
+    })),
+  };
+}
+
+const defaultPreviewSong = toPreviewSong(
+  parseCifraLocally(samplePreview, { titleHint: "Pré-visualização", artistHint: "MapaLouvor" }),
+  "preview-default",
+);
+
 function NewMap() {
   const [dragOver, setDragOver] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -35,9 +78,15 @@ function NewMap() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const createFromParsed = useSongStore((s) => s.createFromParsed);
   const navigate = useNavigate();
-  const previewSong = useSongStore((s) => s.songs[0]);
+  const storedPreviewSong = useSongStore((s) => s.songs[0]);
   const runParse = useServerFn(parseCifra);
   const runFetchUrl = useServerFn(fetchCifraFromUrl);
+
+  const previewSong = useMemo(() => {
+    if (!text.trim()) return storedPreviewSong ?? defaultPreviewSong;
+    const parsed = parseCifraLocally(text, { titleHint: title, artistHint: artist });
+    return parsed.blocks.length ? toPreviewSong(parsed) : storedPreviewSong ?? defaultPreviewSong;
+  }, [artist, storedPreviewSong, text, title]);
 
   const runProcessWith = async (opts: {
     text: string;
@@ -69,7 +118,7 @@ function NewMap() {
         bpmEstimated: parsed.bpmEstimated,
         time: parsed.time,
         rhythm: parsed.rhythm,
-        blocks: parsed.blocks.map((b: { type: string; chords: string[]; repeat: string | null; lyric: string | null; note: string | null }) => ({
+        blocks: parsed.blocks.map((b) => ({
           type: b.type,
           chords: b.chords,
           repeat: b.repeat ?? undefined,
@@ -124,6 +173,26 @@ function NewMap() {
     }
   };
 
+  const handleFile = async (file: File) => {
+    if (processing) return;
+    try {
+      toast.loading("Lendo arquivo...", { id: "file-read" });
+      const content = await extractTextFromFile(file);
+      toast.dismiss("file-read");
+      if (!content.trim()) {
+        toast.error("Arquivo vazio ou sem texto legível.");
+        return;
+      }
+      setText(content);
+      toast.success(`Arquivo carregado: ${file.name}. Gerando mapa...`);
+      await runProcessWith({ text: content, titleHint: title, artistHint: artist });
+    } catch (err) {
+      toast.dismiss("file-read");
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Erro ao ler arquivo: ${msg}`);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -161,7 +230,7 @@ function NewMap() {
       <header className="space-y-1">
         <h1 className="h-song">Novo Mapa</h1>
         <p className="text-[15px] text-muted-foreground">
-          Envie uma cifra, cole o texto ou arraste um PDF — a IA monta o mapa.
+          Envie uma cifra, cole o texto ou arraste PDF/DOCX/TXT — a IA monta o mapa.
         </p>
       </header>
 
@@ -236,7 +305,7 @@ function NewMap() {
               )}
             </button>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              A cifra será baixada automaticamente. Depois clique em "Gerar mapa com IA".
+              A cifra será baixada e o mapa será gerado automaticamente.
             </p>
           </div>
 
@@ -251,21 +320,7 @@ function NewMap() {
               setDragOver(false);
               const file = e.dataTransfer.files?.[0];
               if (!file) return;
-              try {
-                toast.loading("Lendo arquivo...", { id: "file-read" });
-                const content = await extractTextFromFile(file);
-                toast.dismiss("file-read");
-                if (!content.trim()) {
-                  toast.error("Arquivo vazio ou sem texto legível.");
-                  return;
-                }
-                setText(content);
-                toast.success(`Arquivo carregado: ${file.name}`);
-              } catch (err) {
-                toast.dismiss("file-read");
-                const msg = err instanceof Error ? err.message : String(err);
-                toast.error(`Erro ao ler arquivo: ${msg}`);
-              }
+              await handleFile(file);
             }}
             className={cn(
               "flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors",
@@ -275,33 +330,19 @@ function NewMap() {
           >
             <input
               type="file"
-              accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".txt,.pdf,.docx,.md,.rtf,text/plain,text/markdown,application/pdf,application/rtf,text/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="hidden"
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 e.currentTarget.value = "";
-                try {
-                  toast.loading("Lendo arquivo...", { id: "file-read" });
-                  const content = await extractTextFromFile(file);
-                  toast.dismiss("file-read");
-                  if (!content.trim()) {
-                    toast.error("Arquivo vazio ou sem texto legível.");
-                    return;
-                  }
-                  setText(content);
-                  toast.success(`Arquivo carregado: ${file.name}`);
-                } catch (err) {
-                  toast.dismiss("file-read");
-                  const msg = err instanceof Error ? err.message : String(err);
-                  toast.error(`Erro ao ler arquivo: ${msg}`);
-                }
+                await handleFile(file);
               }}
             />
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/30">
               <UploadCloud className="h-6 w-6" />
             </div>
-            <div className="mt-3 text-[15px] font-semibold">Arraste um arquivo .txt, .pdf ou .docx</div>
+            <div className="mt-3 text-[15px] font-semibold">Arraste um arquivo PDF, DOCX, TXT, MD ou RTF</div>
             <div className="mt-1 text-[13px] text-muted-foreground">
               Ou clique para escolher — também pode colar o texto abaixo
             </div>
@@ -377,7 +418,7 @@ function NewMap() {
             <div className="text-[12px] text-muted-foreground">Exemplo do formato final</div>
           </div>
           <div className="max-h-[70vh] overflow-auto rounded-lg">
-            {previewSong ? <SongMapRenderer song={previewSong} /> : null}
+            <SongMapRenderer song={previewSong} />
           </div>
         </div>
       </div>

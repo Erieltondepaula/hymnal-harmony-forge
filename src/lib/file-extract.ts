@@ -47,6 +47,17 @@ async function extractDocx(file: File): Promise<string> {
   return (result.value ?? "").trim();
 }
 
+async function extractRtf(file: File): Promise<string> {
+  const raw = await file.text();
+  return raw
+    .replace(/\\'[0-9a-f]{2}/gi, "")
+    .replace(/\\par[d]?/gi, "\n")
+    .replace(/\\[a-z]+-?\d* ?/gi, "")
+    .replace(/[{}]/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export async function extractTextFromFile(file: File): Promise<string> {
   const name = file.name.toLowerCase();
   if (name.endsWith(".pdf") || file.type === "application/pdf") {
@@ -59,5 +70,11 @@ export async function extractTextFromFile(file: File): Promise<string> {
   ) {
     return extractDocx(file);
   }
-  return await file.text();
+  if (name.endsWith(".doc")) {
+    throw new Error("Arquivos .doc antigos não são suportados. Salve como .docx ou PDF e tente novamente.");
+  }
+  if (name.endsWith(".rtf") || file.type === "application/rtf" || file.type === "text/rtf") {
+    return extractRtf(file);
+  }
+  return (await file.text()).trim();
 }

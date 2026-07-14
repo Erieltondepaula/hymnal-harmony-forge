@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Undo2,
@@ -133,6 +133,21 @@ function Editor() {
     return () => clearTimeout(t);
   }, [song?.updatedAt]);
 
+  // Storage invariant: blocks live in `originalKey` and are transposed to
+  // `key` at render time. Migrate legacy songs whose blocks were mutated
+  // during previous key changes.
+  const migratedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!song || song.blocksInOriginalKey) return;
+    if (migratedRef.current === song.id) return;
+    migratedRef.current = song.id;
+    const normalizedBlocks =
+      song.key !== song.originalKey
+        ? smartTransposeAll(song.blocks, song.key, song.originalKey)
+        : song.blocks;
+    update(song.id, { blocks: normalizedBlocks, blocksInOriginalKey: true });
+  }, [song?.id, song?.blocksInOriginalKey, song?.key, song?.originalKey, song?.blocks, update]);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   if (!song) {
@@ -157,21 +172,6 @@ function Editor() {
     reorderBlocks(song.id, arrayMove(ids, oldIdx, newIdx));
   };
 
-  // Storage invariant: blocks live in `originalKey` and are transposed to
-  // `key` at render time. Migrate legacy songs whose blocks were mutated
-  // during previous key changes.
-  const migratedRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!song || song.blocksInOriginalKey) return;
-    if (migratedRef.current === song.id) return;
-    migratedRef.current = song.id;
-    const normalizedBlocks =
-      song.key !== song.originalKey
-        ? smartTransposeAll(song.blocks, song.key, song.originalKey)
-        : song.blocks;
-    update(song.id, { blocks: normalizedBlocks, blocksInOriginalKey: true });
-  }, [song?.id, song?.blocksInOriginalKey, song?.key, song?.originalKey, song?.blocks, update]);
-
   const changeKey = (newKey: string) => {
     // Only change the "current" key — blocks stay stored in originalKey.
     update(song.id, { key: newKey });
@@ -184,20 +184,9 @@ function Editor() {
     update(song.id, { originalKey: newOriginal, blocks: rebasedBlocks });
   };
 
-  const displayBlocks = useMemo(
-    () => smartTransposeAll(song.blocks, song.originalKey, song.key),
-    [song.blocks, song.originalKey, song.key],
-  );
-
-  const displaySong: Song = useMemo(
-    () => ({ ...song, blocks: displayBlocks }),
-    [song, displayBlocks],
-  );
-
-  const selected = useMemo(
-    () => displayBlocks.find((b) => b.id === selectedId) ?? null,
-    [displayBlocks, selectedId],
-  );
+  const displayBlocks = smartTransposeAll(song.blocks, song.originalKey, song.key);
+  const displaySong: Song = { ...song, blocks: displayBlocks };
+  const selected = displayBlocks.find((b) => b.id === selectedId) ?? null;
 
   const intervalLabel = formatKeyInterval(song.originalKey, song.key);
 
