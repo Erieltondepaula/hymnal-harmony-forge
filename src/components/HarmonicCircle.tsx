@@ -71,13 +71,20 @@ export function HarmonicCircle({
   const IV_i  = (idx - step + 12) % 12;
   const V_i   = (idx + step + 12) % 12;
   const I_i   = idx;
-  // Visual layout (harmonic wheel): the minor ring is ordered by relative
-  // minors, so the iii degree is one cycle step from the tonic and vi stays
-  // aligned with I. Example: C => Em is iii, Am is vi; D => F#m is iii, Bm is vi.
-  const iii_i = (idx + step + 12) % 12;
-  const vi_i  = idx;
+  // Visual layout correction requested for the harmonic wheel:
+  // swap only the visible minor-ring slots for iii and vi. The harmonic
+  // values/calculations stay intact; only where those two labels appear changes.
+  // Examples: C => Em appears where Am was, Am appears where Em was;
+  // D => F#m appears where Bm was, Bm appears where F#m was.
+  const iii_i = idx;
+  const vi_i  = (idx + step + 12) % 12;
   const ii_i  = (idx - step + 12) % 12;   // same angular pos as IV
   const vii_i = idx;
+
+  const swappedMinors = [...minors];
+  const swappedMinorLabels = [...minorLabels];
+  [swappedMinors[iii_i], swappedMinors[vi_i]] = [swappedMinors[vi_i], swappedMinors[iii_i]];
+  [swappedMinorLabels[iii_i], swappedMinorLabels[vi_i]] = [swappedMinorLabels[vi_i], swappedMinorLabels[iii_i]];
 
   const size = 360;
   const cx = size / 2;
@@ -203,7 +210,7 @@ export function HarmonicCircle({
         {/* Outer ring: DIMINISHED (vii°) */}
         {renderRing(rMid1, rOuter, dimLabels, dims, "d", 11, 700, "d", majors)}
         {/* Middle ring: MINORS */}
-        {renderRing(rMid2, rMid1, minorLabels, minors, "m", 12, 600, "m")}
+        {renderRing(rMid2, rMid1, swappedMinorLabels, swappedMinors, "m", 12, 600, "m")}
         {/* Inner ring: MAJORS */}
         {renderRing(rInner, rMid2, majorLabels, majors, "M", 13, 700, "M")}
 
