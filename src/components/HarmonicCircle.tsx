@@ -71,12 +71,11 @@ export function HarmonicCircle({
   const IV_i  = (idx - step + 12) % 12;
   const V_i   = (idx + step + 12) % 12;
   const I_i   = idx;
-  // Visual layout (harmonic wheel):
-  //   iii sits at the same angular position as I (central/superior),
-  //   vi  sits at the same angular position as V (superior externa).
-  // Example (tom G): iii = Bm, vi = Em.
-  const iii_i = idx;
-  const vi_i  = (idx + step + 12) % 12;
+  // Visual layout (harmonic wheel): the minor ring is ordered by relative
+  // minors, so the iii degree is one cycle step from the tonic and vi stays
+  // aligned with I. Example: C => Em is iii, Am is vi; D => F#m is iii, Bm is vi.
+  const iii_i = (idx + step + 12) % 12;
+  const vi_i  = idx;
   const ii_i  = (idx - step + 12) % 12;   // same angular pos as IV
   const vii_i = idx;
 
