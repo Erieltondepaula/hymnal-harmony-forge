@@ -1,25 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { generateObject } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
-
-const BlockSchema = z.object({
-  type: z.string().describe("Nome da seção em MAIÚSCULAS: INTRODUÇÃO, PARTE 1, PARTE 2, REFRÃO, PONTE, SOLO, FINAL, etc."),
-  chords: z.array(z.string()).describe("Sequência de acordes na ordem tocada"),
-  repeat: z.string().nullable().describe("Número de vezes, ex.: '2X', '3X'. null se for 1x."),
-  lyric: z.string().nullable().describe("Primeira linha da letra desta seção."),
-  note: z.string().nullable().describe("Observação opcional."),
-});
-
-const SongSchema = z.object({
-  title: z.string(),
-  artist: z.string(),
-  originalKey: z.string().describe("Tom original detectado, ex.: 'Am', 'C', 'G#m'"),
-  bpm: z.number().describe("BPM estimado, entre 40 e 240"),
-  bpmEstimated: z.boolean(),
-  time: z.string().describe("Compasso, ex.: '4/4'"),
-  rhythm: z.string().describe("Estilo/ritmo: Adoração, Pop Rock, Balada, etc."),
-  blocks: z.array(BlockSchema),
-});
 
 const ParseInput = z.object({
   text: z.string().min(1).max(20000),
@@ -37,13 +18,25 @@ Regras:
 - Consolide repetições: se a mesma seção se repete, use 'repeat' como '2X', '3X'.
 - Acordes: preserve formato original (Am, F, C/E, G7M, Dm9, etc.), sem espaços.
 - Letra: inclua apenas a PRIMEIRA linha de cada seção como 'lyric' (identificação visual).
-- Retorne SEM comentários, apenas o JSON estruturado.`;
+- Retorne SEM comentários, apenas o JSON estruturado.
+- O JSON deve ter exatamente: title, artist, originalKey, bpm, bpmEstimated, time, rhythm, blocks.
+- Cada bloco deve ter: type, chords(array de strings), repeat(null ou string), lyric(null ou string), note(null ou string).`;
 
 export const parseCifra = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ParseInput.parse(input))
   .handler(async ({ data }) => {
+    const { extractJsonObject, normalizeSongMap, parseCifraLocally } = await import("./cifra-parser");
+    const fallback = parseCifraLocally(data.text, {
+      titleHint: data.titleHint,
+      artistHint: data.artistHint,
+    });
+
+    if (!fallback.blocks.length) {
+      throw new Error("Não encontrei acordes no texto. Verifique se a cifra foi copiada corretamente.");
+    }
+
     const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    if (!key) return fallback;
 
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
     const gateway = createLovableAiGatewayProvider(key);
@@ -59,32 +52,18 @@ export const parseCifra = createServerFn({ method: "POST" })
       .join("\n");
 
     try {
-      const { object } = await generateObject({
-        model: gateway("google/gemini-2.5-flash"),
+      const { text } = await generateText({
+        model: gateway("google/gemini-3-flash-preview"),
         system: SYSTEM,
         prompt,
-        schema: SongSchema,
+        temperature: 0,
+        maxOutputTokens: 3500,
       });
-      return object;
+      return normalizeSongMap(extractJsonObject(text), fallback);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("429")) throw new Error("Muitas requisições. Tente novamente em instantes.");
       if (msg.includes("402")) throw new Error("Créditos de IA esgotados. Adicione créditos ao workspace.");
-      // Retry once with a stricter model if schema validation failed.
-      if (/schema|object generated|match/i.test(msg)) {
-        try {
-          const { object } = await generateObject({
-            model: gateway("google/gemini-2.5-pro"),
-            system: SYSTEM + "\nResponda SOMENTE o JSON válido conforme o schema.",
-            prompt,
-            schema: SongSchema,
-          });
-          return object;
-        } catch (e2: unknown) {
-          const m2 = e2 instanceof Error ? e2.message : String(e2);
-          throw new Error(`Falha ao analisar cifra: ${m2}`);
-        }
-      }
-      throw new Error(`Falha ao analisar cifra: ${msg}`);
+      return fallback;
     }
   });
