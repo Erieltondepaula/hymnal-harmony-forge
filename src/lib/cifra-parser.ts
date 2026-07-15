@@ -179,14 +179,23 @@ export function parseCifraLocally(
   }
 
   const validBlocks = blocks
-    .map((block, index) => ({
-      ...block,
-      type: block.type || (index === 0 ? "INTRODUÇÃO" : `PARTE ${index}`),
-      chords: block.chords.filter(Boolean),
-      repeat: block.repeat ?? null,
-      lyric: block.lyric ?? null,
-      note: block.note ?? null,
-    }))
+    .map((block, index) => {
+      // Modo compacto: colapsa repetições consecutivas do mesmo acorde
+      // (E E E B E → E B E). Mantém a ordem harmônica sem o ruído de linhas
+      // que só reforçam o mesmo acorde.
+      const dedup: string[] = [];
+      for (const c of block.chords.filter(Boolean)) {
+        if (dedup[dedup.length - 1] !== c) dedup.push(c);
+      }
+      return {
+        ...block,
+        type: block.type || (index === 0 ? "INTRODUÇÃO" : `PARTE ${index}`),
+        chords: dedup,
+        repeat: block.repeat ?? null,
+        lyric: block.lyric ?? null,
+        note: block.note ?? null,
+      };
+    })
     .filter((block) => block.chords.length > 0);
 
   return {
