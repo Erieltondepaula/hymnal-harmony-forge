@@ -179,14 +179,23 @@ export function parseCifraLocally(
   }
 
   const validBlocks = blocks
-    .map((block, index) => ({
-      ...block,
-      type: block.type || (index === 0 ? "INTRODUÇÃO" : `PARTE ${index}`),
-      chords: block.chords.filter(Boolean),
-      repeat: block.repeat ?? null,
-      lyric: block.lyric ?? null,
-      note: block.note ?? null,
-    }))
+    .map((block, index) => {
+      // Modo compacto: colapsa repetições consecutivas do mesmo acorde
+      // (E E E B E → E B E). Mantém a ordem harmônica sem o ruído de linhas
+      // que só reforçam o mesmo acorde.
+      const dedup: string[] = [];
+      for (const c of block.chords.filter(Boolean)) {
+        if (dedup[dedup.length - 1] !== c) dedup.push(c);
+      }
+      return {
+        ...block,
+        type: block.type || (index === 0 ? "INTRODUÇÃO" : `PARTE ${index}`),
+        chords: dedup,
+        repeat: block.repeat ?? null,
+        lyric: block.lyric ?? null,
+        note: block.note ?? null,
+      };
+    })
     .filter((block) => block.chords.length > 0);
 
   return {
@@ -230,10 +239,13 @@ export function normalizeSongMap(raw: unknown, fallback: ParsedCifraSong): Parse
       if (!item || typeof item !== "object") return null;
       const block = item as Record<string, unknown>;
       const chordValue = block.chords ?? block.acordes ?? block.progression;
-      const chords = Array.isArray(chordValue)
+      const rawChords = Array.isArray(chordValue)
         ? chordValue.map((chord) => String(chord)).flatMap(splitChords)
         : splitChords(String(chordValue ?? ""));
-      if (!chords.length) return null;
+      if (!rawChords.length) return null;
+      // Modo compacto: colapsa repetições consecutivas do mesmo acorde.
+      const chords: string[] = [];
+      for (const c of rawChords) if (chords[chords.length - 1] !== c) chords.push(c);
       return {
         type: String(block.type ?? block.name ?? block.section ?? (index === 0 ? "INTRODUÇÃO" : `PARTE ${index}`)).toUpperCase(),
         chords,
