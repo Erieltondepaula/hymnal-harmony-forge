@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import type { Song } from "@/lib/song-store";
+import { useRef, useState } from "react";
+import type { Song, Block } from "@/lib/song-store";
 import { useSongStore } from "@/lib/song-store";
 import { usePreferences, pageDimensionsMm, DEFAULT_CHORD_COLORS } from "@/lib/preferences-store";
 import { keyInterval } from "@/lib/harmonic-field";
