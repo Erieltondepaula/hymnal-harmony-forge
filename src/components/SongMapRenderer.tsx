@@ -166,12 +166,190 @@ function MetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * Manual chord groups ("acordes rápidos") — the user explicitly marks two or
+ * more adjacent chords played close together (e.g. B/D# → E in one beat).
+ * The group is stored on the block as an array of consecutive indices.
+ * We DON'T auto-detect this — it's always user-driven.
+ */
+function groupIndexOf(groups: number[][] | undefined, idx: number): number {
+  if (!groups) return -1;
+  return groups.findIndex((g) => g.includes(idx));
+}
+
+function BlockSection({
+  songId,
+  block: b,
+  editable,
+  palette,
+  updateBlock,
+}: {
+  songId: string;
+  block: Block;
+  editable: boolean;
+  palette: Record<string, string>;
+  updateBlock: (songId: string, blockId: string, patch: Partial<Block>) => void;
+}) {
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const single = b.chords.length === 1;
+  const count = b.chords.length;
+  const dense =
+    count >= 12 ? "px-1 py-1 text-[10px]" :
+    count >= 9  ? "px-1.5 py-1 text-[11px]" :
+    count >= 7  ? "px-2 py-1 text-[12px]" :
+                  "px-3 py-1.5 text-[15px]";
+
+  const groups = b.chordGroups ?? [];
+  const sortedSel = Array.from(selected).sort((a, z) => a - z);
+  const isConsecutive =
+    sortedSel.length >= 2 &&
+    sortedSel.every((v, i) => i === 0 || v === sortedSel[i - 1] + 1);
+
+  const toggleSelect = (i: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
+
+  const commitGroup = () => {
+    if (!isConsecutive) return;
+    // Merge with any existing group that touches this range
+    const range = new Set(sortedSel);
+    const remaining: number[][] = [];
+    for (const g of groups) {
+      if (g.some((i) => range.has(i) || range.has(i - 1) || range.has(i + 1))) {
+        g.forEach((i) => range.add(i));
+      } else {
+        remaining.push(g);
+      }
+    }
+    const merged = Array.from(range).sort((a, z) => a - z);
+    updateBlock(songId, b.id, { chordGroups: [...remaining, merged] });
+    setSelected(new Set());
+  };
+
+  const ungroup = (gi: number) => {
+    const next = groups.filter((_, i) => i !== gi);
+    updateBlock(songId, b.id, { chordGroups: next });
+  };
+
+  return (
+    <section className="break-inside-avoid">
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-[16px] font-bold uppercase tracking-wide text-neutral-900">
+          {b.type}
+        </h2>
+        {b.repeat ? (
+          <span className="rounded-sm bg-neutral-900 px-2 py-0.5 text-[11px] font-semibold text-white">
+            {b.repeat}
+          </span>
+        ) : null}
+        {editable && isConsecutive ? (
+          <button
+            type="button"
+            onClick={commitGroup}
+            className="rounded-sm border border-neutral-900 bg-white px-2 py-0.5 text-[11px] font-semibold text-neutral-900 hover:bg-neutral-100 print:hidden"
+            title="Agrupar acordes selecionados como acordes rápidos"
+          >
+            Agrupar rápidos ({sortedSel.length})
+          </button>
+        ) : null}
+        {editable && selected.size > 0 && !isConsecutive ? (
+          <span className="text-[11px] text-neutral-500 print:hidden">
+            selecione acordes vizinhos
+          </span>
+        ) : null}
+      </div>
+
+      <div
+        className={cn(
+          "mt-1.5 grid overflow-hidden rounded-md border border-neutral-800",
+          single ? "w-fit" : "w-full",
+        )}
+        style={{
+          gridAutoFlow: "column",
+          gridAutoColumns: "minmax(0, 1fr)",
+        }}
+      >
+        {b.chords.map((c, i) => {
+          const override = b.chordColors?.[i] ?? null;
+          const color = colorFor(c, palette, override);
+          const isLast = i === count - 1;
+          const gi = groupIndexOf(groups, i);
+          const inGroup = gi >= 0;
+          const groupStart = inGroup && !groups[gi].includes(i - 1);
+          const groupEnd = inGroup && !groups[gi].includes(i + 1);
+          return (
+            <ChordCell
+              key={i}
+              chord={c}
+              bg={color.bg}
+              dense={dense}
+              isLast={isLast}
+              editable={editable}
+              selected={selected.has(i)}
+              inGroup={inGroup}
+              groupStart={groupStart}
+              groupEnd={groupEnd}
+              onShiftClick={() => toggleSelect(i)}
+              onUngroup={inGroup ? () => ungroup(gi) : undefined}
+              onChangeColor={(hex) => {
+                const next = [...(b.chordColors ?? [])];
+                while (next.length < b.chords.length) next.push(null);
+                next[i] = hex;
+                updateBlock(songId, b.id, { chordColors: next });
+              }}
+              onClearColor={() => {
+                if (!b.chordColors) return;
+                const next = [...b.chordColors];
+                next[i] = null;
+                updateBlock(songId, b.id, { chordColors: next });
+              }}
+            />
+          );
+        })}
+      </div>
+
+      {b.lyric ? (
+        <p className="mt-2 text-[15px] font-medium leading-relaxed text-neutral-900">
+          {b.lyric}
+        </p>
+      ) : null}
+      {b.note ? (
+        <div
+          className="mt-2 flex items-start gap-2 rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2"
+          style={{
+            WebkitPrintColorAdjust: "exact",
+            printColorAdjust: "exact",
+          }}
+        >
+          <span className="text-[13px] font-bold uppercase tracking-wider text-amber-700">
+            OBS:
+          </span>
+          <span className="text-[14px] font-semibold leading-snug text-amber-900">
+            {b.note}
+          </span>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function ChordCell({
   chord,
   bg,
   dense,
   isLast,
   editable,
+  selected,
+  inGroup,
+  groupStart,
+  groupEnd,
+  onShiftClick,
+  onUngroup,
   onChangeColor,
   onClearColor,
 }: {
@@ -180,6 +358,12 @@ function ChordCell({
   dense: string;
   isLast: boolean;
   editable: boolean;
+  selected: boolean;
+  inGroup: boolean;
+  groupStart: boolean;
+  groupEnd: boolean;
+  onShiftClick: () => void;
+  onUngroup?: () => void;
   onChangeColor: (hex: string) => void;
   onClearColor: () => void;
 }) {
@@ -191,22 +375,50 @@ function ChordCell({
         dense,
         !isLast && "border-r border-neutral-800",
         editable && "cursor-pointer",
+        selected && "ring-2 ring-blue-500 ring-inset",
+        inGroup && "text-[85%]",
+        inGroup && groupStart && "border-t-[3px] border-t-neutral-900",
+        inGroup && !groupStart && "border-t-[3px] border-t-neutral-900",
+        inGroup && groupEnd && "border-r-neutral-900",
       )}
       style={{
         backgroundColor: bg,
         WebkitPrintColorAdjust: "exact",
         printColorAdjust: "exact",
       }}
-      onClick={editable ? () => inputRef.current?.click() : undefined}
+      onClick={
+        editable
+          ? (e) => {
+              if (e.shiftKey) {
+                e.preventDefault();
+                onShiftClick();
+                return;
+              }
+              if (inGroup && onUngroup && e.altKey) {
+                e.preventDefault();
+                onUngroup();
+                return;
+              }
+              inputRef.current?.click();
+            }
+          : undefined
+      }
       onContextMenu={
         editable
           ? (e) => {
               e.preventDefault();
-              onClearColor();
+              if (inGroup && onUngroup) onUngroup();
+              else onClearColor();
             }
           : undefined
       }
-      title={editable ? "Clique para mudar a cor · botão direito para restaurar" : undefined}
+      title={
+        editable
+          ? inGroup
+            ? "Acorde rápido · Alt+clique ou botão direito para desagrupar"
+            : "Clique: cor · Shift+clique: selecionar para agrupar · Botão direito: limpar cor"
+          : undefined
+      }
     >
       {chord}
       {editable ? (
