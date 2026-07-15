@@ -239,10 +239,13 @@ export function normalizeSongMap(raw: unknown, fallback: ParsedCifraSong): Parse
       if (!item || typeof item !== "object") return null;
       const block = item as Record<string, unknown>;
       const chordValue = block.chords ?? block.acordes ?? block.progression;
-      const chords = Array.isArray(chordValue)
+      const rawChords = Array.isArray(chordValue)
         ? chordValue.map((chord) => String(chord)).flatMap(splitChords)
         : splitChords(String(chordValue ?? ""));
-      if (!chords.length) return null;
+      if (!rawChords.length) return null;
+      // Modo compacto: colapsa repetições consecutivas do mesmo acorde.
+      const chords: string[] = [];
+      for (const c of rawChords) if (chords[chords.length - 1] !== c) chords.push(c);
       return {
         type: String(block.type ?? block.name ?? block.section ?? (index === 0 ? "INTRODUÇÃO" : `PARTE ${index}`)).toUpperCase(),
         chords,
