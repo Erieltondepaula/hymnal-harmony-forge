@@ -132,95 +132,16 @@ export function SongMapRenderer({ song, className, editable = false }: { song: S
 
       {/* Blocks */}
       <div className="space-y-4">
-        {song.blocks.map((b) => {
-          const single = b.chords.length === 1;
-          return (
-            <section key={b.id} className="break-inside-avoid">
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-[16px] font-bold uppercase tracking-wide text-neutral-900">
-                  {b.type}
-                </h2>
-                {b.repeat ? (
-                  <span className="rounded-sm bg-neutral-900 px-2 py-0.5 text-[11px] font-semibold text-white">
-                    {b.repeat}
-                  </span>
-                ) : null}
-              </div>
-
-              {(() => {
-                const count = b.chords.length;
-                // Adjust font size + padding so long rows stay on ONE line.
-                const dense =
-                  count >= 12 ? "px-1 py-1 text-[10px]" :
-                  count >= 9  ? "px-1.5 py-1 text-[11px]" :
-                  count >= 7  ? "px-2 py-1 text-[12px]" :
-                                "px-3 py-1.5 text-[15px]";
-                return (
-                  <div
-                    className={cn(
-                      "mt-1.5 grid overflow-hidden rounded-md border border-neutral-800",
-                      single ? "w-fit" : "w-full",
-                    )}
-                    style={{
-                      gridAutoFlow: "column",
-                      gridAutoColumns: "minmax(0, 1fr)",
-                    }}
-                  >
-                    {b.chords.map((c, i) => {
-                      const override = b.chordColors?.[i] ?? null;
-                      const color = colorFor(c, prefs.chordColors, override);
-                      const isLast = i === count - 1;
-                      return (
-                        <ChordCell
-                          key={i}
-                          chord={c}
-                          bg={color.bg}
-                          dense={dense}
-                          isLast={isLast}
-                          editable={editable}
-                          onChangeColor={(hex) => {
-                            const next = [...(b.chordColors ?? [])];
-                            while (next.length < b.chords.length) next.push(null);
-                            next[i] = hex;
-                            updateBlock(song.id, b.id, { chordColors: next });
-                          }}
-                          onClearColor={() => {
-                            if (!b.chordColors) return;
-                            const next = [...b.chordColors];
-                            next[i] = null;
-                            updateBlock(song.id, b.id, { chordColors: next });
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-
-              {b.lyric ? (
-                <p className="mt-2 text-[15px] font-medium leading-relaxed text-neutral-900">
-                  {b.lyric}
-                </p>
-              ) : null}
-              {b.note ? (
-                <div
-                  className="mt-2 flex items-start gap-2 rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2"
-                  style={{
-                    WebkitPrintColorAdjust: "exact",
-                    printColorAdjust: "exact",
-                  }}
-                >
-                  <span className="text-[13px] font-bold uppercase tracking-wider text-amber-700">
-                    OBS:
-                  </span>
-                  <span className="text-[14px] font-semibold leading-snug text-amber-900">
-                    {b.note}
-                  </span>
-                </div>
-              ) : null}
-            </section>
-          );
-        })}
+        {song.blocks.map((b) => (
+          <BlockSection
+            key={b.id}
+            songId={song.id}
+            block={b}
+            editable={editable}
+            palette={prefs.chordColors}
+            updateBlock={updateBlock}
+          />
+        ))}
       </div>
 
       <footer className="mt-8 flex items-center justify-between border-t border-neutral-200 pt-3 text-[10px] text-neutral-400">
