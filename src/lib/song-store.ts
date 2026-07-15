@@ -5,6 +5,7 @@ export type Block = {
   type: string; // INTRODUÇÃO, PARTE 1, REFRÃO, PONTE, SOLO, FINAL, etc.
   chords: string[];
   chordColors?: (string | null)[]; // per-chord override color (hex), aligned with chords by index
+  chordGroups?: number[][]; // manual groupings of adjacent chord indices ("acordes rápidos"), e.g. [[2,3]]
   repeat?: string; // "2X", "3X"
   lyric?: string;
   note?: string;
