@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.assign_master_admin() FROM PUBLIC, anon, authenticated;
