@@ -372,6 +372,7 @@ function ChordCell({
   dense,
   isLast,
   editable,
+  selectMode,
   selected,
   inGroup,
   groupStart,
@@ -386,6 +387,7 @@ function ChordCell({
   dense: string;
   isLast: boolean;
   editable: boolean;
+  selectMode: boolean;
   selected: boolean;
   inGroup: boolean;
   groupStart: boolean;
@@ -417,7 +419,7 @@ function ChordCell({
       onClick={
         editable
           ? (e) => {
-              if (e.shiftKey) {
+              if (selectMode || e.shiftKey) {
                 e.preventDefault();
                 onShiftClick();
                 return;
@@ -442,9 +444,11 @@ function ChordCell({
       }
       title={
         editable
-          ? inGroup
-            ? "Acorde rápido · Alt+clique ou botão direito para desagrupar"
-            : "Clique: cor · Shift+clique: selecionar para agrupar · Botão direito: limpar cor"
+          ? selectMode
+            ? "Clique para selecionar/desselecionar"
+            : inGroup
+              ? "Acorde rápido · botão direito para desagrupar"
+              : "Clique: cor · Shift+clique: agrupar · Botão direito: limpar cor"
           : undefined
       }
     >
