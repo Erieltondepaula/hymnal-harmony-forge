@@ -317,6 +317,7 @@ function BlockSection({
               dense={dense}
               isLast={isLast}
               editable={editable}
+              selectMode={selectMode}
               selected={selected.has(i)}
               inGroup={inGroup}
               groupStart={groupStart}
