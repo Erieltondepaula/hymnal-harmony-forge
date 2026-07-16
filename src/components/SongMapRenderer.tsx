@@ -191,6 +191,7 @@ function BlockSection({
   updateBlock: (songId: string, blockId: string, patch: Partial<Block>) => void;
 }) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
   const single = b.chords.length === 1;
   const count = b.chords.length;
   const dense =
@@ -216,7 +217,6 @@ function BlockSection({
 
   const commitGroup = () => {
     if (!isConsecutive) return;
-    // Merge with any existing group that touches this range
     const range = new Set(sortedSel);
     const remaining: number[][] = [];
     for (const g of groups) {
@@ -229,6 +229,7 @@ function BlockSection({
     const merged = Array.from(range).sort((a, z) => a - z);
     updateBlock(songId, b.id, { chordGroups: [...remaining, merged] });
     setSelected(new Set());
+    setSelectMode(false);
   };
 
   const ungroup = (gi: number) => {
@@ -238,7 +239,7 @@ function BlockSection({
 
   return (
     <section className="break-inside-avoid">
-      <div className="flex items-baseline gap-3">
+      <div className="flex flex-wrap items-baseline gap-3">
         <h2 className="text-[16px] font-bold uppercase tracking-wide text-neutral-900">
           {b.type}
         </h2>
@@ -247,19 +248,45 @@ function BlockSection({
             {b.repeat}
           </span>
         ) : null}
-        {editable && isConsecutive ? (
+        {editable ? (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectMode((v) => !v);
+              setSelected(new Set());
+            }}
+            className={cn(
+              "rounded-sm border px-2 py-0.5 text-[11px] font-semibold print:hidden",
+              selectMode
+                ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
+                : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100",
+            )}
+            title="Marcar acordes rápidos (tocados muito próximos)"
+          >
+            {selectMode ? "Cancelar seleção" : "Marcar rápidos"}
+          </button>
+        ) : null}
+        {editable && selectMode && isConsecutive ? (
           <button
             type="button"
             onClick={commitGroup}
-            className="rounded-sm border border-neutral-900 bg-white px-2 py-0.5 text-[11px] font-semibold text-neutral-900 hover:bg-neutral-100 print:hidden"
-            title="Agrupar acordes selecionados como acordes rápidos"
+            className="rounded-sm border border-neutral-900 bg-neutral-900 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-neutral-800 print:hidden"
           >
-            Agrupar rápidos ({sortedSel.length})
+            Agrupar ({sortedSel.length})
           </button>
         ) : null}
-        {editable && selected.size > 0 && !isConsecutive ? (
+        {editable && selectMode ? (
           <span className="text-[11px] text-neutral-500 print:hidden">
-            selecione acordes vizinhos
+            {selected.size === 0
+              ? "Clique nos acordes vizinhos tocados rápido"
+              : !isConsecutive
+                ? "Selecione acordes vizinhos"
+                : "Confirme o agrupamento"}
+          </span>
+        ) : null}
+        {editable && !selectMode && groups.length > 0 ? (
+          <span className="text-[11px] text-neutral-500 print:hidden">
+            {groups.length} grupo{groups.length > 1 ? "s" : ""} · clique-direito p/ desfazer
           </span>
         ) : null}
       </div>
