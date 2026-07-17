@@ -81,7 +81,7 @@ export function chordToDegree(
   return { degree: degIdx + 1, ext: p.ext, bass: p.bass };
 }
 
-import { buildScale } from "./theory";
+
 
 export function degreeToChord(
   degree: number,
