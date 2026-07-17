@@ -1,6 +1,7 @@
 // Harmonic-field (campo harmônico) engine.
 // Maps chords to scale degrees (1–7) of a diatonic major field and back,
 // so key changes preserve harmonic function instead of doing raw chromatic math.
+import { buildScale } from "./theory";
 
 const SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
