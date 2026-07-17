@@ -1,6 +1,7 @@
 // Harmonic-field (campo harmônico) engine.
 // Maps chords to scale degrees (1–7) of a diatonic major field and back,
 // so key changes preserve harmonic function instead of doing raw chromatic math.
+import { buildScale } from "./theory";
 
 const SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
@@ -80,6 +81,8 @@ export function chordToDegree(
   return { degree: degIdx + 1, ext: p.ext, bass: p.bass };
 }
 
+
+
 export function degreeToChord(
   degree: number,
   ext: string,
@@ -87,8 +90,9 @@ export function degreeToChord(
   bassNote?: string,
 ): string {
   const major = relativeMajor(key);
-  const iv = INTERVALS[degree - 1];
-  const root = noteAt(major, iv);
+  // Use letter-consecutive spelling (no mixed accidentals). Fallback to chromatic.
+  const scale = buildScale(major, "major", "auto");
+  const root = scale[degree - 1] ?? noteAt(major, INTERVALS[degree - 1]);
   const q = DIA_QUALS[degree - 1];
   const qStr = q === "maj" ? "" : q === "m" ? "m" : "dim";
   let chord = root + qStr + ext;
