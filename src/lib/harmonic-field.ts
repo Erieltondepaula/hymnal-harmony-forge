@@ -80,6 +80,8 @@ export function chordToDegree(
   return { degree: degIdx + 1, ext: p.ext, bass: p.bass };
 }
 
+import { buildScale } from "./theory";
+
 export function degreeToChord(
   degree: number,
   ext: string,
@@ -87,8 +89,9 @@ export function degreeToChord(
   bassNote?: string,
 ): string {
   const major = relativeMajor(key);
-  const iv = INTERVALS[degree - 1];
-  const root = noteAt(major, iv);
+  // Use letter-consecutive spelling (no mixed accidentals). Fallback to chromatic.
+  const scale = buildScale(major, "major", "auto");
+  const root = scale[degree - 1] ?? noteAt(major, INTERVALS[degree - 1]);
   const q = DIA_QUALS[degree - 1];
   const qStr = q === "maj" ? "" : q === "m" ? "m" : "dim";
   let chord = root + qStr + ext;
