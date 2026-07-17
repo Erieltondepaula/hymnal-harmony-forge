@@ -1,59 +1,75 @@
-## Escopo desta primeira entrega
+# Refatoração do Módulo de Harmonia — Harmony Forge
 
-A especificação cobre um produto grande (IA de interpretação musical, OCR, exportação PDF vetorial, biblioteca com banco, colaboração, etc.). Proponho fatiar em fases e entregar **agora a Fase 1 — Fundação Visual + Editor com Preview ao Vivo**, respeitando exatamente a identidade visual, tipografia, grid de 8px e o padrão visual do mapa (baseado no PDF `TEU AMOR NÃO FALHA` que você enviou).
+Trata-se de uma refatoração grande. Proponho entregar em **fases** para manter a aplicação funcionando a cada passo (a lógica de transposição atual — `smartTransposeChord`, campo harmônico da maior — continua intacta durante toda a migração).
 
-Isso garante que o "esqueleto" e o padrão visual do mapa estejam corretos antes de plugarmos IA e backend — que é onde o custo/complexidade explode.
+## Fase 1 — Motor de Teoria Musical (novo core)
 
-## O que entra na Fase 1 (agora)
+Novo arquivo `src/lib/theory/` com módulos puros e testáveis:
 
-**Design System**
-- Tokens em `src/styles.css`: paleta exata (#0F1115, #171A21, #1D212B, #2A2F3A, #FFFFFF, #A9B0BE, #4F7DFF, #22C55E, #EF4444, #FACC15), tipografia Inter, escala 8px, radius (cards 16, botões 12, campos 10), sombras discretas, transições 180ms.
-- Tema escuro como padrão.
-- Font Inter via `<link>` no `__root.tsx`.
+- **`chromatic.ts`** — escala cromática, enarmônicos, PC (pitch class 0-11).
+- **`scales.ts`** — fórmulas intervalares:
+  - Maior Natural: `2-2-1-2-2-2-1`
+  - Menor Natural: `2-1-2-2-1-2-2`
+  - Menor Harmônica: `2-1-2-2-1-3-1`
+  - Menor Melódica (asc): `2-1-2-2-2-2-1`
+- **`spelling.ts`** — grafia correta por armadura (nunca mistura ♯/♭). Regra: dada uma tônica e modo, gera as 7 notas usando **letras consecutivas** (A,B,C,D,E,F,G) e ajusta acidente para bater com o PC — algoritmo padrão de "note spelling".
+- **`field.ts`** — campo harmônico dinâmico: para cada grau, monta tríade com 1-3-5 da escala e classifica qualidade (maior/menor/dim/aug) a partir dos intervalos reais. Isso naturalmente produz:
+  - Maior → I ii iii IV V vi vii°
+  - Menor natural → i ii° III iv v VI VII
+  - Menor harmônica → i ii° III+ iv V VI vii°
+  - Menor melódica → i ii III+ IV V vi° vii°
+- **`functions.ts`** — mapa grau → função (Tônica, Supertônica, Mediante, Subdominante, Dominante, Submediante, Sensível/Subtônica).
+- **`intervals.ts`** — nome de intervalos (3ª maior, 5ª justa, 7ª menor, etc.).
 
-**Layout da aplicação**
-- Sidebar fixa 280px: Logo, Dashboard, Novo Projeto, Biblioteca, Importar, Configurações, Ajuda, usuário no rodapé.
-- Área principal fluida com max 1600px, padding 40px, margens 48px.
+## Fase 2 — Ciclo/Círculo como navegador
 
-**Rotas (TanStack Start)**
-- `/` Dashboard: saudação, dois botões grandes (Novo Mapa / Importar PDF), grade de "Projetos recentes" com cards (nome, artista, tom, BPM, última edição, Abrir).
-- `/novo` Novo Mapa: split 40/60 — coluna esquerda de importação (drag & drop, colar, arquivo, link, texto), coluna direita com preview do mapa.
-- `/editor/$id` Editor completo: 3 áreas (painel de blocos à esquerda com drag & drop, preview central, painel de propriedades à direita) + header com salvar/desfazer/refazer/exportar + status bar.
-- `/biblioteca` Biblioteca: busca, filtros, favoritos, tags, grid de cards.
-- `/configuracoes` e `/ajuda` placeholders visuais.
+- Reescrever `HarmonicCircle.tsx` para consumir o novo motor.
+- Adicionar seletor de **modo** (Maior / Menor Nat / Menor Harm / Menor Mel).
+- Adicionar seletor de **notação** (Auto / ♯ / ♭).
+- **Todos os 12 acordes clicáveis** (usa PC, não string fixa) — ao clicar, vira tônica.
+- Destaque do acorde selecionado: escala levemente, borda, ring animado.
+- Rótulos mostram grau (I, ii, iii°, V…) sob o nome do acorde.
 
-**Renderer do Mapa Musical**
-- Componente `SongMapRenderer` que reproduz fielmente o padrão do PDF anexado: título, TOM, RITMO com setas, blocos (INTRODUÇÃO/PARTE/REFRÃO/PONTE/SOLO/FINAL) com tabela de acordes, indicador de repetições (2X, 3X), primeira linha da letra ("Nada vai me separar…"), observações.
-- Usado tanto no preview quanto na futura exportação PDF.
+## Fase 3 — Painel Harmônico lateral
 
-**Editor com Live Preview**
-- Estado local (Zustand) do projeto: metadados (título, artista, tom, BPM, compasso, ritmo) + array de blocos.
-- Alterar tom/BPM/bloco/acorde atualiza o preview em <100ms, sem botão "Gerar".
-- Drag & drop de blocos (dnd-kit).
-- Desfazer/Refazer com histórico ilimitado da sessão (Ctrl+Z / Ctrl+Shift+Z).
-- Auto-save em `localStorage` (backend real vem na Fase 2).
+Novo `HarmonyPanel.tsx` (substitui/estende o painel atual do editor):
+- Tom + Modo + Armadura + Tom Relativo
+- Escala completa (7 notas, grafia correta)
+- Campo harmônico com 7 acordes + graus + funções
+- Ao clicar num acorde da **cifra da música**, abre este painel focado nele.
 
-**Motor de transposição (puro TS)**
-- Função `transpose(chord, fromKey, toKey)` cobrindo C, C#, Db, m, 7, maj7, 9, add9, sus2, sus4, °, dim, aug e slash chords (`/E`).
-- Muda o tom → recalcula todos os acordes matematicamente.
+## Fase 4 — Integração com transposição existente
 
-**Seed de dados**
-- Pré-carrega os 2 exemplos do PDF (TEU AMOR NÃO FALHA, QUE ELE CRESÇA) como projetos demo para o dashboard/biblioteca não ficarem vazios.
+- `smartTransposeChord` passa a delegar em `theory/field.ts` (mantendo a API pública, então nada quebra em `song-store`, editor, etc.).
+- Grafia do resultado respeita o **modo + tom destino** (sem misturar acidentes).
 
-## O que fica para próximas fases (não entra agora)
+## Fase 5 — Dicionário de Acordes (`/dicionario`)
 
-- **Fase 2 — Backend & Persistência:** Lovable Cloud (auth, banco, storage), CRUD de projetos, upload real de PDFs.
-- **Fase 3 — IA & OCR:** parsing de PDF/DOCX/TXT, OCR de imagens, detecção de estrutura/tom/BPM, resumo inteligente — via Lovable AI Gateway (Gemini).
-- **Fase 4 — Exportação PDF vetorial, compartilhamento por link, tags avançadas, versionamento, colaboração em tempo real, apps mobile.**
+Nova rota `src/routes/dicionario.tsx`:
+- Busca livre + construtor (Fundamental × Tipo).
+- Detalhes: nome, fórmula, intervalos, notas, inversões.
+- **Piano** (SVG teclado com notas destacadas — componente novo `PianoDiagram`).
+- **Violão** (diagrama de traste — componente novo `GuitarDiagram`, usa um pequeno banco de digitações para tipos comuns; para tipos raros, mostra "posição não catalogada" em vez de inventar).
+- **Áudio**: usa `Tone.js` via dynamic import (client-only) para tocar o acorde.
+- Em quais campos harmônicos aparece; escalas relacionadas.
 
-Vou confirmar cada fase antes de iniciar para evitar retrabalho.
+Adicionar link "Dicionário" no `AppSidebar`.
+
+## Fase 6 — Painel do acorde na música
+
+No `SongMapRenderer`, botão/clique-longo em um acorde abre drawer com:
+Piano · Violão · Escala · Campo · Função · Graus · Intervalos · Inversões · Substituições · Escalas relacionadas — reutilizando componentes da Fase 5.
 
 ## Detalhes técnicos
 
-- Stack: TanStack Start + React 19 + Tailwind v4 + shadcn (já no template).
-- Novas dependências: `zustand` (estado), `@dnd-kit/core` + `@dnd-kit/sortable` (drag & drop), `framer-motion` (animações 180ms).
-- Sem `tailwind.config.js` — tokens vão em `@theme` de `src/styles.css`.
-- Sidebar via shadcn `Sidebar` com `collapsible="icon"`.
-- Sem tela de login nesta fase; usuário fake "João" no header.
+- **Sem tabelas fixas** de campo harmônico. Tudo derivado das fórmulas intervalares + grafia por letra.
+- **Enarmônicos**: motor trabalha em PC (0-11); apresentação decide grafia.
+- **Tone.js**: `bun add tone`; import dinâmico dentro de handler (SSR safe).
+- **Compatibilidade**: `smartTransposeChord`, `diatonicField`, `formatKeyInterval` mantêm assinaturas. Tipos existentes de `Song` não mudam.
+- **Testes rápidos** de sanidade após Fase 1: verificar que Eb Maior → Eb F G Ab Bb C D (Eb Fm Gm Ab Bb Cm D°) e F# Maior → F# G# A# B C# D# E# (sem misturar bemóis).
 
-Confirma que faz sentido começar assim (Fase 1 completa e polida agora, IA/backend nas próximas)?
+## Escopo desta primeira entrega
+
+Se você aprovar, sugiro entregar **Fases 1 → 4 nesta rodada** (motor completo + círculo novo + painel lateral + transposição delegada) porque são interdependentes. **Fases 5 e 6 (Dicionário + drawer na música)** em uma segunda rodada, pois envolvem UI grande (piano, violão, áudio) e vale confirmar preferências visuais.
+
+Confirma essa divisão? Ou prefere que eu já ataque tudo (1–6) de uma vez?
