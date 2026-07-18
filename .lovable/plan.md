@@ -1,75 +1,71 @@
-# Refatoração do Módulo de Harmonia — Harmony Forge
+## Objetivo
 
-Trata-se de uma refatoração grande. Proponho entregar em **fases** para manter a aplicação funcionando a cada passo (a lógica de transposição atual — `smartTransposeChord`, campo harmônico da maior — continua intacta durante toda a migração).
+Consolidar e validar 100% a base teórica antes de avançar. Restaurar o Ciclo das Quintas original (visual/comportamento simples e intuitivo) e dividir os conceitos misturados no atual `HarmonyPanel` em **4 módulos independentes**, cada um com uma única responsabilidade.
 
-## Fase 1 — Motor de Teoria Musical (novo core)
+Nenhuma mudança em dicionário de acordes, piano, violão, áudio ou drawer harmônico nesta etapa — isso fica reservado para as Fases 5-6.
 
-Novo arquivo `src/lib/theory/` com módulos puros e testáveis:
+## Arquitetura dos módulos
 
-- **`chromatic.ts`** — escala cromática, enarmônicos, PC (pitch class 0-11).
-- **`scales.ts`** — fórmulas intervalares:
-  - Maior Natural: `2-2-1-2-2-2-1`
-  - Menor Natural: `2-1-2-2-1-2-2`
-  - Menor Harmônica: `2-1-2-2-1-3-1`
-  - Menor Melódica (asc): `2-1-2-2-2-2-1`
-- **`spelling.ts`** — grafia correta por armadura (nunca mistura ♯/♭). Regra: dada uma tônica e modo, gera as 7 notas usando **letras consecutivas** (A,B,C,D,E,F,G) e ajusta acidente para bater com o PC — algoritmo padrão de "note spelling".
-- **`field.ts`** — campo harmônico dinâmico: para cada grau, monta tríade com 1-3-5 da escala e classifica qualidade (maior/menor/dim/aug) a partir dos intervalos reais. Isso naturalmente produz:
-  - Maior → I ii iii IV V vi vii°
-  - Menor natural → i ii° III iv v VI VII
-  - Menor harmônica → i ii° III+ iv V VI vii°
-  - Menor melódica → i ii III+ IV V vi° vii°
-- **`functions.ts`** — mapa grau → função (Tônica, Supertônica, Mediante, Subdominante, Dominante, Submediante, Sensível/Subtônica).
-- **`intervals.ts`** — nome de intervalos (3ª maior, 5ª justa, 7ª menor, etc.).
+Cada módulo é um componente isolado em `src/components/harmony/`, consumindo o mesmo motor `src/lib/theory/` (já criado nas Fases 1-4). Recebe `currentKey` + `onSelectKey` e nada mais.
 
-## Fase 2 — Ciclo/Círculo como navegador
+```text
+src/components/harmony/
+  CircleOfFifths.tsx      -> Ciclo das Quintas (Maior)      [restaurado]
+  CircleOfFifthsMinor.tsx -> Ciclo das Quintas (Menor)      [novo]
+  CircleOfFourths.tsx     -> Ciclo das Quartas              [novo]
+  ChromaticScale.tsx      -> Escala cromática 12 sons       [novo]
+  HarmonicField.tsx       -> Campo harmônico + escala + armadura  [extraído]
+  HarmonyTabs.tsx         -> Wrapper com abas (Quintas | Quartas | Cromática | Campo)
+```
 
-- Reescrever `HarmonicCircle.tsx` para consumir o novo motor.
-- Adicionar seletor de **modo** (Maior / Menor Nat / Menor Harm / Menor Mel).
-- Adicionar seletor de **notação** (Auto / ♯ / ♭).
-- **Todos os 12 acordes clicáveis** (usa PC, não string fixa) — ao clicar, vira tônica.
-- Destaque do acorde selecionado: escala levemente, borda, ring animado.
-- Rótulos mostram grau (I, ii, iii°, V…) sob o nome do acorde.
+O `HarmonicCircle.tsx` atual passa a re-exportar o `HarmonyTabs` para preservar imports existentes no editor.
 
-## Fase 3 — Painel Harmônico lateral
+## Detalhamento por módulo
 
-Novo `HarmonyPanel.tsx` (substitui/estende o painel atual do editor):
-- Tom + Modo + Armadura + Tom Relativo
-- Escala completa (7 notas, grafia correta)
-- Campo harmônico com 7 acordes + graus + funções
-- Ao clicar num acorde da **cifra da música**, abre este painel focado nele.
+**1. Ciclo das Quintas (Maior) — restaurado**
+Layout circular simples da primeira versão: 12 tonalidades maiores no anel externo, relativas menores no anel interno. Sem anel de diminutos. Destaque do tom atual e das funções I/IV/V/vi ao redor. Clique em qualquer segmento define o tom.
 
-## Fase 4 — Integração com transposição existente
+**2. Ciclo das Quintas (Menor) — novo**
+Mesma estrutura visual, mas centrado na perspectiva menor: menores no anel externo (ordem de quintas Am → Em → Bm...), relativos maiores no interno.
 
-- `smartTransposeChord` passa a delegar em `theory/field.ts` (mantendo a API pública, então nada quebra em `song-store`, editor, etc.).
-- Grafia do resultado respeita o **modo + tom destino** (sem misturar acidentes).
+**3. Ciclo das Quartas — novo**
+Ordem inversa (C → F → B♭ → E♭...). Mesmo layout de dois anéis, para servir de espelho didático do Ciclo das Quintas.
 
-## Fase 5 — Dicionário de Acordes (`/dicionario`)
+**4. Escala Cromática — novo**
+Faixa horizontal (não circular) com os 12 sons, mostrando ambas as grafias (♯ e ♭) para as notas alteradas: C, C♯/D♭, D, D♯/E♭, E, F, F♯/G♭, G, G♯/A♭, A, A♯/B♭, B. Todos clicáveis; o tom atual fica destacado.
 
-Nova rota `src/routes/dicionario.tsx`:
-- Busca livre + construtor (Fundamental × Tipo).
-- Detalhes: nome, fórmula, intervalos, notas, inversões.
-- **Piano** (SVG teclado com notas destacadas — componente novo `PianoDiagram`).
-- **Violão** (diagrama de traste — componente novo `GuitarDiagram`, usa um pequeno banco de digitações para tipos comuns; para tipos raros, mostra "posição não catalogada" em vez de inventar).
-- **Áudio**: usa `Tone.js` via dynamic import (client-only) para tocar o acorde.
-- Em quais campos harmônicos aparece; escalas relacionadas.
+**5. Campo Harmônico — extraído do painel atual**
+Seção separada com: seletor de modo (Maior / Menor Natural / Harmônica / Melódica), notação (Auto/♯/♭), escala, armadura, relativo, 7 graus com números romanos e funções (Tônica, Supertônica, ..., Sensível). Já existe no motor `harmonicField()` — só é reorganizado para ficar sozinho.
 
-Adicionar link "Dicionário" no `AppSidebar`.
+## Wrapper com abas
 
-## Fase 6 — Painel do acorde na música
+O `HarmonyTabs.tsx` usa `Tabs` do shadcn com 4 abas (Quintas / Quartas / Cromática / Campo). Cada aba renderiza um único módulo. Isso substitui a barra de botões atual (modo + notação + direção) que sobrecarrega visualmente o painel.
 
-No `SongMapRenderer`, botão/clique-longo em um acorde abre drawer com:
-Piano · Violão · Escala · Campo · Função · Graus · Intervalos · Inversões · Substituições · Escalas relacionadas — reutilizando componentes da Fase 5.
+Modo e notação passam a viver **dentro** do módulo Campo Harmônico (onde realmente fazem sentido), não como controles globais.
 
-## Detalhes técnicos
+## Validação teórica
 
-- **Sem tabelas fixas** de campo harmônico. Tudo derivado das fórmulas intervalares + grafia por letra.
-- **Enarmônicos**: motor trabalha em PC (0-11); apresentação decide grafia.
-- **Tone.js**: `bun add tone`; import dinâmico dentro de handler (SSR safe).
-- **Compatibilidade**: `smartTransposeChord`, `diatonicField`, `formatKeyInterval` mantêm assinaturas. Tipos existentes de `Song` não mudam.
-- **Testes rápidos** de sanidade após Fase 1: verificar que Eb Maior → Eb F G Ab Bb C D (Eb Fm Gm Ab Bb Cm D°) e F# Maior → F# G# A# B C# D# E# (sem misturar bemóis).
+Adicionar `src/lib/theory/__tests__/theory.test.ts` cobrindo:
 
-## Escopo desta primeira entrega
+- Escala cromática: 12 sons, com grafias ♯ e ♭
+- Escalas Maior, Menor Natural, Harmônica, Melódica em C, G, F, F♯, G♭, B, A♭ (sem misturar acidentes)
+- Campos harmônicos: qualidade de cada tríade em maior (I ii iii IV V vi vii°), menor natural (i ii° III iv v VI VII), harmônica (i ii° III+ iv V VI vii°), melódica (i ii III+ IV V vi° vii°)
+- Armaduras de clave: 0 a 7 ♯/♭ em maior e relativas menores
+- Todas 17 tonalidades clicáveis: C, C♯, D♭, D, D♯, E♭, E, F, F♯, G♭, G, G♯, A♭, A, A♯, B♭, B
 
-Se você aprovar, sugiro entregar **Fases 1 → 4 nesta rodada** (motor completo + círculo novo + painel lateral + transposição delegada) porque são interdependentes. **Fases 5 e 6 (Dicionário + drawer na música)** em uma segunda rodada, pois envolvem UI grande (piano, violão, áudio) e vale confirmar preferências visuais.
+Rodar com `bunx vitest run` para confirmar aprovação total antes de fechar a etapa.
 
-Confirma essa divisão? Ou prefere que eu já ataque tudo (1–6) de uma vez?
+## Ordem de execução
+
+1. Criar `src/components/harmony/CircleOfFifths.tsx` (restaurar layout original de 2 anéis).
+2. Criar `CircleOfFifthsMinor.tsx`, `CircleOfFourths.tsx`, `ChromaticScale.tsx`, `HarmonicField.tsx`.
+3. Criar `HarmonyTabs.tsx` (wrapper com 4 abas).
+4. Reescrever `src/components/HarmonicCircle.tsx` como reexport de `HarmonyTabs` (mantém `HarmonyPanel` e `HarmonicCircle` como aliases).
+5. Adicionar testes `src/lib/theory/__tests__/theory.test.ts` e rodar.
+6. Corrigir qualquer divergência encontrada no motor.
+
+## Fora de escopo (Fases 5-6, adiadas)
+
+Dicionário de acordes, diagramas de piano/violão, áudio, drawer harmônico ao clicar em acorde da música, progressões sugeridas. Nada disso será tocado agora.
+
+Confirma que posso implementar exatamente assim?
