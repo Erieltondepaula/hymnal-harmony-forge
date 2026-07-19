@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CircleOfFifths } from "./CircleOfFifths";
-import { CircleOfFifthsMinor } from "./CircleOfFifthsMinor";
-import { CircleOfFourths } from "./CircleOfFourths";
+import { OriginalCircle } from "./OriginalCircle";
 import { ChromaticScale } from "./ChromaticScale";
 import { HarmonicField } from "./HarmonicField";
 
@@ -13,33 +11,21 @@ type Props = {
 };
 
 /**
- * HarmonyTabs — wrapper com 4 conceitos separados, cada aba um único tópico.
- * Ciclo das Quintas | Quartas | Cromática | Campo Harmônico.
+ * HarmonyTabs — Ciclo original (Quintas/Quartas com 3 anéis) + módulos separados
+ * para Escala Cromática e Campo Harmônico.
  */
 export function HarmonyTabs({ currentKey, onSelectKey, className }: Props) {
-  const [tab, setTab] = useState("fifths");
+  const [tab, setTab] = useState("circle");
   return (
     <div className={className ?? "w-[380px] flex flex-col gap-3"}>
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="fifths" className="text-[11px]">Quintas</TabsTrigger>
-          <TabsTrigger value="fourths" className="text-[11px]">Quartas</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="circle" className="text-[11px]">Ciclo</TabsTrigger>
           <TabsTrigger value="chromatic" className="text-[11px]">Cromática</TabsTrigger>
           <TabsTrigger value="field" className="text-[11px]">Campo</TabsTrigger>
         </TabsList>
-        <TabsContent value="fifths" className="mt-3 space-y-3">
-          <CircleOfFifths currentKey={currentKey} onSelectKey={onSelectKey} />
-          <details className="rounded-lg border border-border bg-surface px-3 py-2 text-[11px]">
-            <summary className="cursor-pointer font-semibold text-muted-foreground">
-              Ver Ciclo das Quintas (perspectiva menor)
-            </summary>
-            <div className="mt-3">
-              <CircleOfFifthsMinor currentKey={currentKey} onSelectKey={onSelectKey} />
-            </div>
-          </details>
-        </TabsContent>
-        <TabsContent value="fourths" className="mt-3">
-          <CircleOfFourths currentKey={currentKey} onSelectKey={onSelectKey} />
+        <TabsContent value="circle" className="mt-3">
+          <OriginalCircle currentKey={currentKey} onSelectKey={onSelectKey} />
         </TabsContent>
         <TabsContent value="chromatic" className="mt-3">
           <ChromaticScale currentKey={currentKey} onSelectKey={onSelectKey} />
