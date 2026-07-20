@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 export type PageSize = "A4" | "Carta" | "A5" | "custom";
+export type ChordViewMode = "compact" | "smart" | "measures" | "scroll";
 
 export type Preferences = {
   // Perfil
@@ -28,6 +29,11 @@ export type Preferences = {
 
   // Cores personalizadas dos acordes, por nota raiz (C, C#, D, ...).
   chordColors: Record<string, string>;
+
+  // Modo de visualização dos acordes no mapa.
+  chordViewMode: ChordViewMode;
+  // Tamanho por compasso (usado em modo "measures").
+  measureChordCount: number;
 };
 
 export const DEFAULT_CHORD_COLORS: Record<string, string> = {
@@ -57,6 +63,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   footerText: "Gerado por MapaLouvor",
 
   chordColors: { ...DEFAULT_CHORD_COLORS },
+  chordViewMode: "smart",
+  measureChordCount: 4,
 };
 
 type State = Preferences & {

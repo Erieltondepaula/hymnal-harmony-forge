@@ -1,7 +1,12 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import type { Song, Block } from "@/lib/song-store";
 import { useSongStore } from "@/lib/song-store";
-import { usePreferences, pageDimensionsMm, DEFAULT_CHORD_COLORS } from "@/lib/preferences-store";
+import {
+  usePreferences,
+  pageDimensionsMm,
+  DEFAULT_CHORD_COLORS,
+  type ChordViewMode,
+} from "@/lib/preferences-store";
 import { keyInterval } from "@/lib/harmonic-field";
 import { cn } from "@/lib/utils";
 
@@ -36,11 +41,23 @@ function formatToneLabel(originalKey: string, currentKey: string) {
   return `${originalKey} → ${currentKey}${arrow ? ` ${arrow} ${intervalText}` : ""}`;
 }
 
-export function SongMapRenderer({ song, className, editable = false }: { song: Song; className?: string; editable?: boolean }) {
+export function SongMapRenderer({
+  song,
+  className,
+  editable = false,
+  viewMode,
+}: {
+  song: Song;
+  className?: string;
+  editable?: boolean;
+  viewMode?: ChordViewMode;
+}) {
   const prefs = usePreferences();
   const updateBlock = useSongStore((s) => s.updateBlock);
   const { w, h } = pageDimensionsMm(prefs);
   const usableW = Math.max(50, w - prefs.marginMm * 2);
+  const mode: ChordViewMode = viewMode ?? prefs.chordViewMode ?? "smart";
+  const measureSize = Math.max(2, prefs.measureChordCount || 4);
 
   const show = {
     key: song.show?.key ?? true,
@@ -72,7 +89,6 @@ export function SongMapRenderer({ song, className, editable = false }: { song: S
         fontFamily: "Inter, sans-serif",
       }}
     >
-      {/* Dynamic @page for print */}
       <style>{`@media print { @page { size: ${
         prefs.pageSize === "custom" ? `${w}mm ${h}mm` : `${prefs.pageSize === "Carta" ? "Letter" : prefs.pageSize} portrait`
       }; margin: ${prefs.marginMm}mm; } }`}</style>
@@ -98,7 +114,6 @@ export function SongMapRenderer({ song, className, editable = false }: { song: S
         </div>
       ) : null}
 
-      {/* Header */}
       <header className="mb-6 border-b border-neutral-300 pb-4">
         <h1 className="text-[32px] font-bold uppercase tracking-tight leading-none text-neutral-900">
           {song.title || "Sem título"}
@@ -130,7 +145,6 @@ export function SongMapRenderer({ song, className, editable = false }: { song: S
         ) : null}
       </header>
 
-      {/* Blocks */}
       <div className="space-y-4">
         {song.blocks.map((b) => (
           <BlockSection
@@ -140,6 +154,8 @@ export function SongMapRenderer({ song, className, editable = false }: { song: S
             editable={editable}
             palette={prefs.chordColors}
             updateBlock={updateBlock}
+            mode={mode}
+            measureSize={measureSize}
           />
         ))}
       </div>
@@ -166,39 +182,34 @@ function MetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-/**
- * Manual chord groups ("acordes rápidos") — the user explicitly marks two or
- * more adjacent chords played close together (e.g. B/D# → E in one beat).
- * The group is stored on the block as an array of consecutive indices.
- * We DON'T auto-detect this — it's always user-driven.
- */
 function groupIndexOf(groups: number[][] | undefined, idx: number): number {
   if (!groups) return -1;
   return groups.findIndex((g) => g.includes(idx));
 }
 
+/**
+ * Smart Chord Layout — chips of dynamic width, uniform height, never
+ * truncated. Four view modes drive spacing and wrapping.
+ */
 function BlockSection({
   songId,
   block: b,
   editable,
   palette,
   updateBlock,
+  mode,
+  measureSize,
 }: {
   songId: string;
   block: Block;
   editable: boolean;
   palette: Record<string, string>;
   updateBlock: (songId: string, blockId: string, patch: Partial<Block>) => void;
+  mode: ChordViewMode;
+  measureSize: number;
 }) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
-  const single = b.chords.length === 1;
-  const count = b.chords.length;
-  const dense =
-    count >= 12 ? "px-1 py-1 text-[10px]" :
-    count >= 9  ? "px-1.5 py-1 text-[11px]" :
-    count >= 7  ? "px-2 py-1 text-[12px]" :
-                  "px-3 py-1.5 text-[15px]";
 
   const groups = b.chordGroups ?? [];
   const sortedSel = Array.from(selected).sort((a, z) => a - z);
@@ -235,6 +246,135 @@ function BlockSection({
   const ungroup = (gi: number) => {
     const next = groups.filter((_, i) => i !== gi);
     updateBlock(songId, b.id, { chordGroups: next });
+  };
+
+  const setColor = (i: number, hex: string) => {
+    const next = [...(b.chordColors ?? [])];
+    while (next.length < b.chords.length) next.push(null);
+    next[i] = hex;
+    updateBlock(songId, b.id, { chordColors: next });
+  };
+  const clearColor = (i: number) => {
+    if (!b.chordColors) return;
+    const next = [...b.chordColors];
+    next[i] = null;
+    updateBlock(songId, b.id, { chordColors: next });
+  };
+
+  // Build runs: contiguous chords not in the same group render as
+  // individual chips; grouped chords render inside a bracket container.
+  type Run = { key: string; kind: "solo" | "group"; groupIdx?: number; indices: number[] };
+  const runs = useMemo<Run[]>(() => {
+    const out: Run[] = [];
+    for (let i = 0; i < b.chords.length; i++) {
+      const gi = groupIndexOf(groups, i);
+      if (gi >= 0) {
+        const g = groups[gi].slice().sort((a, z) => a - z);
+        out.push({ key: `g-${gi}-${g[0]}`, kind: "group", groupIdx: gi, indices: g });
+        i = g[g.length - 1];
+      } else {
+        out.push({ key: `s-${i}`, kind: "solo", indices: [i] });
+      }
+    }
+    return out;
+  }, [b.chords.length, groups]);
+
+  // In measures mode, we slice the runs into groups of `measureSize` chords
+  // (counting individual chord positions, not runs). Grouped runs count as
+  // one chord for measure purposes so a fast group stays together.
+  const measures = useMemo<Run[][]>(() => {
+    if (mode !== "measures") return [];
+    const out: Run[][] = [];
+    let cur: Run[] = [];
+    let count = 0;
+    for (const r of runs) {
+      cur.push(r);
+      count += 1;
+      if (count >= measureSize) {
+        out.push(cur);
+        cur = [];
+        count = 0;
+      }
+    }
+    if (cur.length) out.push(cur);
+    return out;
+  }, [mode, runs, measureSize]);
+
+  const chipSize =
+    mode === "compact"
+      ? "h-8 px-2.5 text-[12px]"
+      : "h-9 px-3 text-[14px]";
+
+  const gap = mode === "compact" ? "gap-1" : "gap-2";
+
+  const containerCls =
+    mode === "scroll"
+      ? cn("flex flex-nowrap items-center overflow-x-auto pb-1", gap)
+      : mode === "measures"
+        ? "flex flex-wrap items-stretch gap-x-3 gap-y-2"
+        : cn("flex flex-wrap items-center", gap);
+
+  const renderRun = (r: Run) => {
+    if (r.kind === "solo") {
+      const i = r.indices[0];
+      const c = b.chords[i];
+      const override = b.chordColors?.[i] ?? null;
+      const { bg } = colorFor(c, palette, override);
+      return (
+        <ChordChip
+          key={r.key}
+          chord={c}
+          bg={bg}
+          sizeCls={chipSize}
+          editable={editable}
+          selectMode={selectMode}
+          selected={selected.has(i)}
+          onShiftClick={() => toggleSelect(i)}
+          onChangeColor={(hex) => setColor(i, hex)}
+          onClearColor={() => clearColor(i)}
+        />
+      );
+    }
+    // grouped run — bracketed cluster
+    return (
+      <div
+        key={r.key}
+        className="relative inline-flex items-stretch rounded-lg ring-2 ring-neutral-900"
+        style={{ padding: 2 }}
+        title="Acordes rápidos — botão direito para desagrupar"
+        onContextMenu={
+          editable
+            ? (e) => {
+                e.preventDefault();
+                if (r.groupIdx !== undefined) ungroup(r.groupIdx);
+              }
+            : undefined
+        }
+      >
+        <div className={cn("flex items-center", mode === "compact" ? "gap-0.5" : "gap-1")}>
+          {r.indices.map((i) => {
+            const c = b.chords[i];
+            const override = b.chordColors?.[i] ?? null;
+            const { bg } = colorFor(c, palette, override);
+            return (
+              <ChordChip
+                key={i}
+                chord={c}
+                bg={bg}
+                sizeCls={chipSize}
+                editable={editable}
+                selectMode={selectMode}
+                selected={selected.has(i)}
+                compact
+                onShiftClick={() => toggleSelect(i)}
+                onChangeColor={(hex) => setColor(i, hex)}
+                onClearColor={() => clearColor(i)}
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -284,61 +424,27 @@ function BlockSection({
                 : "Confirme o agrupamento"}
           </span>
         ) : null}
-        {editable && !selectMode && groups.length > 0 ? (
-          <span className="text-[11px] text-neutral-500 print:hidden">
-            {groups.length} grupo{groups.length > 1 ? "s" : ""} · clique-direito p/ desfazer
-          </span>
-        ) : null}
       </div>
 
-      <div
-        className={cn(
-          "mt-1.5 grid overflow-hidden rounded-md border border-neutral-800",
-          single ? "w-fit" : "w-full",
+      <div className="mt-2">
+        {mode === "measures" ? (
+          <div className="flex flex-wrap items-stretch gap-x-3 gap-y-2">
+            {measures.map((m, mi) => (
+              <div
+                key={mi}
+                className="flex items-center gap-1.5 rounded-md border-x-2 border-neutral-400 bg-neutral-50/60 px-2 py-1"
+                style={{
+                  WebkitPrintColorAdjust: "exact",
+                  printColorAdjust: "exact",
+                }}
+              >
+                {m.map(renderRun)}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={containerCls}>{runs.map(renderRun)}</div>
         )}
-        style={{
-          gridAutoFlow: "column",
-          gridAutoColumns: "minmax(0, 1fr)",
-        }}
-      >
-        {b.chords.map((c, i) => {
-          const override = b.chordColors?.[i] ?? null;
-          const color = colorFor(c, palette, override);
-          const isLast = i === count - 1;
-          const gi = groupIndexOf(groups, i);
-          const inGroup = gi >= 0;
-          const groupStart = inGroup && !groups[gi].includes(i - 1);
-          const groupEnd = inGroup && !groups[gi].includes(i + 1);
-          return (
-            <ChordCell
-              key={i}
-              chord={c}
-              bg={color.bg}
-              dense={dense}
-              isLast={isLast}
-              editable={editable}
-              selectMode={selectMode}
-              selected={selected.has(i)}
-              inGroup={inGroup}
-              groupStart={groupStart}
-              groupEnd={groupEnd}
-              onShiftClick={() => toggleSelect(i)}
-              onUngroup={inGroup ? () => ungroup(gi) : undefined}
-              onChangeColor={(hex) => {
-                const next = [...(b.chordColors ?? [])];
-                while (next.length < b.chords.length) next.push(null);
-                next[i] = hex;
-                updateBlock(songId, b.id, { chordColors: next });
-              }}
-              onClearColor={() => {
-                if (!b.chordColors) return;
-                const next = [...b.chordColors];
-                next[i] = null;
-                updateBlock(songId, b.id, { chordColors: next });
-              }}
-            />
-          );
-        })}
       </div>
 
       {b.lyric ? (
@@ -366,34 +472,26 @@ function BlockSection({
   );
 }
 
-function ChordCell({
+function ChordChip({
   chord,
   bg,
-  dense,
-  isLast,
+  sizeCls,
   editable,
   selectMode,
   selected,
-  inGroup,
-  groupStart,
-  groupEnd,
+  compact = false,
   onShiftClick,
-  onUngroup,
   onChangeColor,
   onClearColor,
 }: {
   chord: string;
   bg: string;
-  dense: string;
-  isLast: boolean;
+  sizeCls: string;
   editable: boolean;
   selectMode: boolean;
   selected: boolean;
-  inGroup: boolean;
-  groupStart: boolean;
-  groupEnd: boolean;
+  compact?: boolean;
   onShiftClick: () => void;
-  onUngroup?: () => void;
   onChangeColor: (hex: string) => void;
   onClearColor: () => void;
 }) {
@@ -401,15 +499,12 @@ function ChordCell({
   return (
     <div
       className={cn(
-        "chord-cell group relative min-w-0 whitespace-nowrap text-center font-semibold text-neutral-900 leading-tight",
-        dense,
-        !isLast && "border-r border-neutral-800",
-        editable && "cursor-pointer",
-        selected && "ring-2 ring-blue-500 ring-inset",
-        inGroup && "text-[85%]",
-        inGroup && groupStart && "border-t-[3px] border-t-neutral-900",
-        inGroup && !groupStart && "border-t-[3px] border-t-neutral-900",
-        inGroup && groupEnd && "border-r-neutral-900",
+        "chord-cell relative inline-flex items-center justify-center whitespace-nowrap rounded-lg font-semibold text-neutral-900 leading-none select-none",
+        "shadow-sm ring-1 ring-black/5 transition-transform",
+        sizeCls,
+        editable && "cursor-pointer hover:shadow-md hover:-translate-y-[1px]",
+        selected && "ring-2 ring-blue-500",
+        compact && "shadow-none ring-0",
       )}
       style={{
         backgroundColor: bg,
@@ -424,11 +519,6 @@ function ChordCell({
                 onShiftClick();
                 return;
               }
-              if (inGroup && onUngroup && e.altKey) {
-                e.preventDefault();
-                onUngroup();
-                return;
-              }
               inputRef.current?.click();
             }
           : undefined
@@ -437,8 +527,7 @@ function ChordCell({
         editable
           ? (e) => {
               e.preventDefault();
-              if (inGroup && onUngroup) onUngroup();
-              else onClearColor();
+              onClearColor();
             }
           : undefined
       }
@@ -446,9 +535,7 @@ function ChordCell({
         editable
           ? selectMode
             ? "Clique para selecionar/desselecionar"
-            : inGroup
-              ? "Acorde rápido · botão direito para desagrupar"
-              : "Clique: cor · Shift+clique: agrupar · Botão direito: limpar cor"
+            : "Clique: cor · Shift+clique: agrupar · Botão direito: limpar cor"
           : undefined
       }
     >
