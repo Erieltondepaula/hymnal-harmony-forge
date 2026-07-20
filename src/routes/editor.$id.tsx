@@ -246,6 +246,8 @@ function Editor() {
             <Redo2 className="h-4 w-4" />
           </ToolbarBtn>
           <div className="mx-2 h-6 w-px bg-border" />
+          <ChordViewSwitch />
+          <div className="mx-2 h-6 w-px bg-border" />
           <button
             onClick={() => setShowCircle((v) => !v)}
             title="Ciclo das Quintas / Quartas"
