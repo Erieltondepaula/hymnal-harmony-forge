@@ -63,6 +63,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   footerText: "Gerado por MapaLouvor",
 
   chordColors: { ...DEFAULT_CHORD_COLORS },
+  chordViewMode: "smart",
+  measureChordCount: 4,
 };
 
 type State = Preferences & {
