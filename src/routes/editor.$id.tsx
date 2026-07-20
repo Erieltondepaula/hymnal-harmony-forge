@@ -866,3 +866,36 @@ function RhythmPatternEditor({
   );
 }
 
+const CHORD_VIEW_MODES: { id: ChordViewMode; label: string; hint: string }[] = [
+  { id: "compact", label: "Compacto", hint: "Mais acordes por linha" },
+  { id: "smart", label: "Inteligente", hint: "Largura e quebra automáticas" },
+  { id: "measures", label: "Compassos", hint: "Agrupa em compassos" },
+  { id: "scroll", label: "Rolagem", hint: "Uma linha com scroll" },
+];
+
+function ChordViewSwitch() {
+  const mode = usePreferences((s) => s.chordViewMode);
+  const update = usePreferences((s) => s.update);
+  return (
+    <div className="ml-1 hidden items-center gap-0.5 rounded-lg border border-border bg-background/60 p-0.5 md:flex">
+      {CHORD_VIEW_MODES.map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          title={m.hint}
+          onClick={() => update({ chordViewMode: m.id })}
+          className={cn(
+            "rounded-md px-2 py-1 text-[11px] font-semibold transition-colors",
+            mode === m.id
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          )}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+
