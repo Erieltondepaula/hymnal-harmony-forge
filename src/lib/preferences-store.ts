@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 export type PageSize = "A4" | "Carta" | "A5" | "custom";
+export type ChordViewMode = "compact" | "smart" | "measures" | "scroll";
 
 export type Preferences = {
   // Perfil
