@@ -147,6 +147,8 @@ type State = {
     time?: string;
     rhythm?: string;
     blocks: Array<Omit<Block, "id">>;
+    structure?: SongStructureEntry[];
+    derived?: SongDerived;
   }) => string;
   update: (id: string, patch: Partial<Song>) => void;
   updateBlock: (songId: string, blockId: string, patch: Partial<Block>) => void;
