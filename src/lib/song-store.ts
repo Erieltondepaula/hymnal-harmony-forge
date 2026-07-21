@@ -235,6 +235,8 @@ export const useSongStore = create<State>()((set, get) => ({
           updatedAt: now,
           blocks: data.blocks.map((b) => ({ ...b, id: uid() })),
           blocksInOriginalKey: true,
+          structure: data.structure,
+          derived: data.derived,
         };
 
         set((s) => ({ songs: [song, ...s.songs] }));
