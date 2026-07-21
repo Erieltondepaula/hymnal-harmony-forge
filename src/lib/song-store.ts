@@ -20,6 +20,25 @@ export type ShowFlags = {
   capo?: boolean;
 };
 
+/**
+ * ViewModel entry produced by the intelligent import pipeline.
+ * When `structure` is present on a Song the renderer walks it instead of
+ * `blocks`, emitting `↺` references for repeated sections. `structure`
+ * NEVER rewrites `blocks` — `blocks` is the immutable SourceModel.
+ */
+export type SongStructureEntry =
+  | { kind: "content"; sourceIndex: number; structureId: string }
+  | { kind: "ref"; structureId: string; targetType: string; label: string };
+
+export type SongDerived = {
+  estimatedDuration: number;
+  estimatedTempo: number;
+  averageChordDensity: number;
+  difficulty: "easy" | "med" | "hard";
+  uniqueBlocks: number;
+  repeatedBlocks: number;
+};
+
 export type Song = {
   id: string;
   title: string;
@@ -44,6 +63,10 @@ export type Song = {
   // and rendered in `key` via smart transposition. New songs are created
   // with this true; legacy songs are migrated lazily by the editor.
   blocksInOriginalKey?: boolean;
+  /** ViewModel — optional; when present drives rendering. */
+  structure?: SongStructureEntry[];
+  /** Analysis metadata (readonly, filled by the import pipeline). */
+  derived?: SongDerived;
 };
 
 
