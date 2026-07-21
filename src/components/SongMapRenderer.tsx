@@ -196,6 +196,19 @@ export function SongMapRenderer({
   );
 }
 
+function RefBlock({ label }: { label: string }) {
+  return (
+    <section className="break-inside-avoid">
+      <div
+        className="inline-flex items-center gap-2 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-[13px] font-semibold uppercase tracking-wide text-neutral-700"
+        style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
+      >
+        {label}
+      </div>
+    </section>
+  );
+}
+
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline gap-2">
