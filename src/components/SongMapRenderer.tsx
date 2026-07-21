@@ -146,18 +146,43 @@ export function SongMapRenderer({
       </header>
 
       <div className="space-y-4">
-        {song.blocks.map((b) => (
-          <BlockSection
-            key={b.id}
-            songId={song.id}
-            block={b}
-            editable={editable}
-            palette={prefs.chordColors}
-            updateBlock={updateBlock}
-            mode={mode}
-            measureSize={measureSize}
-          />
-        ))}
+        {(() => {
+          const blockById = new Map(song.blocks.map((b, idx) => [idx, b]));
+          const structure = song.structure;
+          if (!structure || structure.length === 0) {
+            return song.blocks.map((b) => (
+              <BlockSection
+                key={b.id}
+                songId={song.id}
+                block={b}
+                editable={editable}
+                palette={prefs.chordColors}
+                updateBlock={updateBlock}
+                mode={mode}
+                measureSize={measureSize}
+              />
+            ));
+          }
+          return structure.map((entry, i) => {
+            if (entry.kind === "ref") {
+              return <RefBlock key={`ref-${i}`} label={entry.label} />;
+            }
+            const b = blockById.get(entry.sourceIndex);
+            if (!b) return null;
+            return (
+              <BlockSection
+                key={b.id}
+                songId={song.id}
+                block={b}
+                editable={editable}
+                palette={prefs.chordColors}
+                updateBlock={updateBlock}
+                mode={mode}
+                measureSize={measureSize}
+              />
+            );
+          });
+        })()}
       </div>
 
       <footer className="mt-8 flex items-center justify-between border-t border-neutral-200 pt-3 text-[10px] text-neutral-400">
@@ -168,6 +193,19 @@ export function SongMapRenderer({
         </span>
       </footer>
     </div>
+  );
+}
+
+function RefBlock({ label }: { label: string }) {
+  return (
+    <section className="break-inside-avoid">
+      <div
+        className="inline-flex items-center gap-2 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-[13px] font-semibold uppercase tracking-wide text-neutral-700"
+        style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
+      >
+        {label}
+      </div>
+    </section>
   );
 }
 

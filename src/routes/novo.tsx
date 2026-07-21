@@ -1,14 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { UploadCloud, FileText, Loader2, CheckCircle2, Sparkles, Link2, Download } from "lucide-react";
+import {
+  UploadCloud,
+  FileText,
+  Loader2,
+  CheckCircle2,
+  Sparkles,
+  Link2,
+  Download,
+  XCircle,
+  Wand2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { useSongStore, type Song } from "@/lib/song-store";
+import { useSongStore, type Song, type SongStructureEntry } from "@/lib/song-store";
 import { SongMapRenderer } from "@/components/SongMapRenderer";
 import { parseCifra } from "@/lib/ai.functions";
 import { fetchCifraFromUrl } from "@/lib/fetch-cifra.functions";
 import { extractTextFromFile } from "@/lib/file-extract";
 import { parseCifraLocally, type ParsedCifraSong } from "@/lib/cifra-parser";
+import { runImportPipeline, type ImportResult, type RepetitionSuggestion } from "@/lib/import";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/novo")({
@@ -19,9 +30,9 @@ const stages = [
   "Lendo cifra...",
   "Identificando tom...",
   "Analisando estrutura...",
-  "Separando partes...",
-  "Detectando repetições...",
-  "Montando mapa...",
+  "Detectando blocos...",
+  "Encontrando repetições...",
+  "Otimizando layout...",
 ];
 
 const samplePreview = `Tom: G
@@ -66,6 +77,37 @@ const defaultPreviewSong = toPreviewSong(
   "preview-default",
 );
 
+function importResultToPreviewSong(res: ImportResult, base?: { title: string; artist: string }): Song {
+  const structure: SongStructureEntry[] = res.view.blocks.map((v) =>
+    v.kind === "ref"
+      ? { kind: "ref", structureId: v.structureId, targetType: v.targetType, label: v.label }
+      : { kind: "content", sourceIndex: v.sourceIndex, structureId: v.structureId },
+  );
+  return {
+    id: "preview-analysis",
+    title: base?.title || res.source.title,
+    artist: base?.artist ?? res.source.artist,
+    originalKey: res.source.originalKey,
+    key: res.source.originalKey,
+    bpm: res.source.bpm,
+    bpmEstimated: res.source.bpmEstimated,
+    time: res.source.time,
+    rhythm: res.source.rhythm,
+    createdAt: 0,
+    updatedAt: 0,
+    blocksInOriginalKey: true,
+    blocks: res.source.blocks.map((b, i) => ({
+      id: `preview-analysis-${i}`,
+      type: b.type,
+      chords: b.chords,
+      repeat: b.repeat ?? undefined,
+      lyric: b.lyric ?? undefined,
+      note: b.note ?? undefined,
+    })),
+    structure,
+  };
+}
+
 function NewMap() {
   const [dragOver, setDragOver] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -75,6 +117,8 @@ function NewMap() {
   const [artist, setArtist] = useState("");
   const [url, setUrl] = useState("");
   const [fetchingUrl, setFetchingUrl] = useState(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [acceptedSuggestions, setAcceptedSuggestions] = useState<Record<number, boolean>>({});
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const createFromParsed = useSongStore((s) => s.createFromParsed);
   const navigate = useNavigate();
@@ -83,57 +127,97 @@ function NewMap() {
   const runFetchUrl = useServerFn(fetchCifraFromUrl);
 
   const previewSong = useMemo(() => {
+    if (result) return importResultToPreviewSong(result, { title, artist });
     if (!text.trim()) return storedPreviewSong ?? defaultPreviewSong;
     const parsed = parseCifraLocally(text, { titleHint: title, artistHint: artist });
     return parsed.blocks.length ? toPreviewSong(parsed) : storedPreviewSong ?? defaultPreviewSong;
-  }, [artist, storedPreviewSong, text, title]);
+  }, [artist, result, storedPreviewSong, text, title]);
 
-  const runProcessWith = async (opts: {
+  const runAnalysisWith = async (opts: {
     text: string;
     titleHint?: string;
     artistHint?: string;
   }) => {
     setProcessing(true);
+    setResult(null);
+    setAcceptedSuggestions({});
     startStageAnimation();
     try {
-      const parsed = await runParse({
-        data: {
-          text: opts.text.trim(),
-          titleHint: opts.titleHint?.trim() || undefined,
-          artistHint: opts.artistHint?.trim() || undefined,
-        },
+      const res = await runImportPipeline({
+        text: opts.text.trim(),
+        titleHint: opts.titleHint?.trim() || undefined,
+        artistHint: opts.artistHint?.trim() || undefined,
+        runParse,
       });
       stopStageAnimation();
       setStage(stages.length);
-      // Atualiza campos visíveis com o que a IA detectou
-      if (!title.trim() && parsed.title) setTitle(parsed.title);
-      if (!artist.trim() && parsed.artist) setArtist(parsed.artist);
-      const finalTitle = (opts.titleHint || title).trim() || parsed.title || "Nova Música";
-      const finalArtist = (opts.artistHint || artist).trim() || parsed.artist || "";
-      const id = createFromParsed({
-        title: finalTitle,
-        artist: finalArtist,
-        originalKey: parsed.originalKey,
-        bpm: parsed.bpm,
-        bpmEstimated: parsed.bpmEstimated,
-        time: parsed.time,
-        rhythm: parsed.rhythm,
-        blocks: parsed.blocks.map((b) => ({
-          type: b.type,
-          chords: b.chords,
-          repeat: b.repeat ?? undefined,
-          lyric: b.lyric ?? undefined,
-          note: b.note ?? undefined,
-        })),
-      });
-      toast.success("Mapa gerado com sucesso!");
-      setTimeout(() => navigate({ to: "/editor/$id", params: { id } }), 300);
+      if (!title.trim() && res.source.title) setTitle(res.source.title);
+      if (!artist.trim() && res.source.artist) setArtist(res.source.artist);
+      setResult(res);
+      toast.success("Análise concluída! Confira o mapa antes de salvar.");
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao analisar cifra";
+      toast.error(msg);
+    } finally {
       stopStageAnimation();
       setProcessing(false);
-      const msg = err instanceof Error ? err.message : "Erro ao processar cifra";
-      toast.error(msg);
     }
+  };
+
+  const confirmAndSave = () => {
+    if (!result) return;
+    const finalTitle = title.trim() || result.source.title || "Nova Música";
+    const finalArtist = artist.trim() || result.source.artist || "";
+
+    // Apply user-accepted suggestions (85–94%) to the ViewModel.
+    const structure: SongStructureEntry[] = result.view.blocks.map((v) =>
+      v.kind === "ref"
+        ? { kind: "ref", structureId: v.structureId, targetType: v.targetType, label: v.label }
+        : { kind: "content", sourceIndex: v.sourceIndex, structureId: v.structureId },
+    );
+    // Accepted suggestions turn a content entry into a ref to the target.
+    const acceptedIndexes = new Set(
+      Object.entries(acceptedSuggestions)
+        .filter(([, v]) => v)
+        .map(([k]) => Number(k)),
+    );
+    if (acceptedIndexes.size) {
+      for (const sug of result.analysis.suggestions) {
+        if (!acceptedIndexes.has(sug.sourceIndex)) continue;
+        const idx = structure.findIndex(
+          (e) => e.kind === "content" && e.sourceIndex === sug.sourceIndex,
+        );
+        if (idx >= 0) {
+          structure[idx] = {
+            kind: "ref",
+            structureId: sug.targetStructureId,
+            targetType: sug.targetType,
+            label: `↺ Voltar ao ${sug.targetType}`,
+          };
+        }
+      }
+    }
+
+    const id = createFromParsed({
+      title: finalTitle,
+      artist: finalArtist,
+      originalKey: result.source.originalKey,
+      bpm: result.source.bpm,
+      bpmEstimated: result.source.bpmEstimated,
+      time: result.source.time,
+      rhythm: result.source.rhythm,
+      blocks: result.source.blocks.map((b) => ({
+        type: b.type,
+        chords: b.chords,
+        repeat: b.repeat ?? undefined,
+        lyric: b.lyric ?? undefined,
+        note: b.note ?? undefined,
+      })),
+      structure,
+      derived: result.analysis.derived,
+    });
+    toast.success("Mapa salvo!");
+    setTimeout(() => navigate({ to: "/editor/$id", params: { id } }), 200);
   };
 
   const importFromUrl = async () => {
@@ -150,17 +234,16 @@ function NewMap() {
     }
     setFetchingUrl(true);
     try {
-      const result = await runFetchUrl({ data: { url: value } });
-      setText(result.text);
-      const nextTitle = title.trim() || result.title || "";
-      const nextArtist = artist.trim() || result.artist || "";
-      if (!title.trim() && result.title) setTitle(result.title);
-      if (!artist.trim() && result.artist) setArtist(result.artist);
-      toast.success("Cifra importada! Analisando com IA...");
+      const fetched = await runFetchUrl({ data: { url: value } });
+      setText(fetched.text);
+      const nextTitle = title.trim() || fetched.title || "";
+      const nextArtist = artist.trim() || fetched.artist || "";
+      if (!title.trim() && fetched.title) setTitle(fetched.title);
+      if (!artist.trim() && fetched.artist) setArtist(fetched.artist);
+      toast.success("Cifra importada! Analisando estrutura...");
       setFetchingUrl(false);
-      // Encadeia análise da IA automaticamente
-      await runProcessWith({
-        text: result.text,
+      await runAnalysisWith({
+        text: fetched.text,
         titleHint: nextTitle,
         artistHint: nextArtist,
       });
@@ -184,8 +267,8 @@ function NewMap() {
         return;
       }
       setText(content);
-      toast.success(`Arquivo carregado: ${file.name}. Gerando mapa...`);
-      await runProcessWith({ text: content, titleHint: title, artistHint: artist });
+      toast.success(`Arquivo carregado: ${file.name}. Analisando...`);
+      await runAnalysisWith({ text: content, titleHint: title, artistHint: artist });
     } catch (err) {
       toast.dismiss("file-read");
       const msg = err instanceof Error ? err.message : String(err);
@@ -210,7 +293,7 @@ function NewMap() {
         return;
       }
       setStage(i);
-    }, 700);
+    }, 550);
   };
 
   const stopStageAnimation = () => {
@@ -222,7 +305,7 @@ function NewMap() {
       toast.error("Cole uma cifra para gerar o mapa.");
       return;
     }
-    await runProcessWith({ text, titleHint: title, artistHint: artist });
+    await runAnalysisWith({ text, titleHint: title, artistHint: artist });
   };
 
   return (
@@ -230,14 +313,14 @@ function NewMap() {
       <header className="space-y-1">
         <h1 className="h-song">Novo Mapa</h1>
         <p className="text-[15px] text-muted-foreground">
-          Envie uma cifra, cole o texto ou arraste PDF/DOCX/TXT — a IA monta o mapa.
+          Envie uma cifra, cole o texto ou arraste PDF/DOCX/TXT/RTF — a IA analisa a estrutura,
+          detecta repetições e monta o mapa otimizado.
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         {/* Import column */}
         <div className="space-y-4">
-          {/* Song identification */}
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="mb-3 flex items-center gap-2 text-[14px] font-semibold">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -269,7 +352,6 @@ function NewMap() {
             </div>
           </div>
 
-          {/* Import from URL (Cifra Club) */}
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="mb-3 flex items-center gap-2 text-[14px] font-semibold">
               <Link2 className="h-4 w-4 text-primary" />
@@ -289,7 +371,7 @@ function NewMap() {
             />
             <button
               onClick={importFromUrl}
-              disabled={fetchingUrl || !url.trim()}
+              disabled={fetchingUrl || !url.trim() || processing}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2.5 text-[14px] font-semibold text-primary transition-all hover:bg-primary/20 disabled:opacity-40"
             >
               {fetchingUrl ? (
@@ -304,9 +386,6 @@ function NewMap() {
                 </>
               )}
             </button>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              A cifra será baixada e o mapa será gerado automaticamente.
-            </p>
           </div>
 
           <label
@@ -368,12 +447,12 @@ function NewMap() {
               {processing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Gerando...
+                  Analisando...
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4" />
-                  Gerar mapa com IA
+                  <Wand2 className="h-4 w-4" />
+                  Analisar e gerar mapa
                 </>
               )}
             </button>
@@ -381,7 +460,7 @@ function NewMap() {
 
           {processing ? (
             <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="mb-4 text-[14px] font-semibold">Processando com IA</div>
+              <div className="mb-4 text-[14px] font-semibold">Analisando estrutura</div>
               <ul className="space-y-2">
                 {stages.map((label, i) => (
                   <li key={label} className="flex items-center gap-2 text-[13px]">
@@ -398,29 +477,164 @@ function NewMap() {
                   </li>
                 ))}
               </ul>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-border">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{
-                    width: `${Math.min(100, (stage / stages.length) * 100)}%`,
-                    transitionDuration: "180ms",
-                  }}
-                />
-              </div>
             </div>
           ) : null}
         </div>
 
         {/* Preview column */}
-        <div className="rounded-2xl border border-border bg-surface p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="text-[14px] font-semibold">Pré-visualização</div>
-            <div className="text-[12px] text-muted-foreground">Exemplo do formato final</div>
-          </div>
-          <div className="max-h-[70vh] overflow-auto rounded-lg">
-            <SongMapRenderer song={previewSong} />
+        <div className="space-y-4">
+          {result ? (
+            <QualityCard
+              result={result}
+              accepted={acceptedSuggestions}
+              onAccept={(idx, v) =>
+                setAcceptedSuggestions((prev) => ({ ...prev, [idx]: v }))
+              }
+              onConfirm={confirmAndSave}
+            />
+          ) : null}
+
+          <div className="rounded-2xl border border-border bg-surface p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-[14px] font-semibold">Pré-visualização</div>
+              <div className="text-[12px] text-muted-foreground">
+                {result ? "Mapa otimizado" : "Exemplo do formato final"}
+              </div>
+            </div>
+            <div className="max-h-[70vh] overflow-auto rounded-lg">
+              <SongMapRenderer song={previewSong} />
+            </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function QualityCard({
+  result,
+  accepted,
+  onAccept,
+  onConfirm,
+}: {
+  result: ImportResult;
+  accepted: Record<number, boolean>;
+  onAccept: (sourceIndex: number, value: boolean) => void;
+  onConfirm: () => void;
+}) {
+  const { score, analysis } = result;
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-[14px] font-semibold">
+          🧠 Estrutura reconhecida
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-[12px] text-muted-foreground">Qualidade</div>
+          <div
+            className={cn(
+              "rounded-md px-2 py-0.5 text-[13px] font-bold",
+              score.overall >= 80
+                ? "bg-success/15 text-success"
+                : score.overall >= 60
+                  ? "bg-amber-500/15 text-amber-700"
+                  : "bg-destructive/15 text-destructive",
+            )}
+          >
+            {score.overall}%
+          </div>
+        </div>
+      </div>
+
+      <ul className="space-y-1.5 text-[13px]">
+        {score.checks.map((c) => (
+          <li key={c.label} className="flex items-start gap-2">
+            {c.ok ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" />
+            ) : (
+              <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            )}
+            <span className={cn(c.ok ? "text-foreground" : "text-muted-foreground")}>
+              {c.label}
+              {c.detail ? <span className="text-muted-foreground"> — {c.detail}</span> : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {analysis.savingsPct > 0 ? (
+        <div className="mt-3 text-[12px] text-muted-foreground">
+          Economia estimada de <span className="font-semibold text-foreground">{analysis.savingsPct}%</span> reutilizando blocos.
+        </div>
+      ) : null}
+
+      {analysis.suggestions.length > 0 ? (
+        <div className="mt-4 space-y-2 border-t border-border pt-3">
+          <div className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Sugestões de reutilização
+          </div>
+          {analysis.suggestions.map((s) => (
+            <SuggestionRow
+              key={s.sourceIndex}
+              s={s}
+              value={accepted[s.sourceIndex] ?? false}
+              onChange={(v) => onAccept(s.sourceIndex, v)}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      <button
+        onClick={onConfirm}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[14px] font-semibold text-primary-foreground transition-all hover:brightness-110"
+      >
+        <CheckCircle2 className="h-4 w-4" />
+        Confirmar e salvar
+      </button>
+    </div>
+  );
+}
+
+function SuggestionRow({
+  s,
+  value,
+  onChange,
+}: {
+  s: RepetitionSuggestion;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background p-3">
+      <div className="text-[13px]">
+        Bloco parecido com <span className="font-semibold">{s.targetType}</span>{" "}
+        <span className="text-muted-foreground">
+          ({Math.round(s.similarity * 100)}% de similaridade)
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onChange(true)}
+          className={cn(
+            "rounded-md border px-3 py-1 text-[12px] font-semibold",
+            value
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-background hover:bg-accent",
+          )}
+        >
+          Sim
+        </button>
+        <button
+          onClick={() => onChange(false)}
+          className={cn(
+            "rounded-md border px-3 py-1 text-[12px] font-semibold",
+            !value
+              ? "border-neutral-900 bg-neutral-900 text-white"
+              : "border-border bg-background hover:bg-accent",
+          )}
+        >
+          Não
+        </button>
       </div>
     </div>
   );
