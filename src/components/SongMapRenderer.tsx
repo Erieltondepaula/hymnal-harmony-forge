@@ -146,18 +146,43 @@ export function SongMapRenderer({
       </header>
 
       <div className="space-y-4">
-        {song.blocks.map((b) => (
-          <BlockSection
-            key={b.id}
-            songId={song.id}
-            block={b}
-            editable={editable}
-            palette={prefs.chordColors}
-            updateBlock={updateBlock}
-            mode={mode}
-            measureSize={measureSize}
-          />
-        ))}
+        {(() => {
+          const blockById = new Map(song.blocks.map((b, idx) => [idx, b]));
+          const structure = song.structure;
+          if (!structure || structure.length === 0) {
+            return song.blocks.map((b) => (
+              <BlockSection
+                key={b.id}
+                songId={song.id}
+                block={b}
+                editable={editable}
+                palette={prefs.chordColors}
+                updateBlock={updateBlock}
+                mode={mode}
+                measureSize={measureSize}
+              />
+            ));
+          }
+          return structure.map((entry, i) => {
+            if (entry.kind === "ref") {
+              return <RefBlock key={`ref-${i}`} label={entry.label} />;
+            }
+            const b = blockById.get(entry.sourceIndex);
+            if (!b) return null;
+            return (
+              <BlockSection
+                key={b.id}
+                songId={song.id}
+                block={b}
+                editable={editable}
+                palette={prefs.chordColors}
+                updateBlock={updateBlock}
+                mode={mode}
+                measureSize={measureSize}
+              />
+            );
+          });
+        })()}
       </div>
 
       <footer className="mt-8 flex items-center justify-between border-t border-neutral-200 pt-3 text-[10px] text-neutral-400">
