@@ -1,71 +1,177 @@
-## Objetivo
+# Importação Inteligente — Pipeline Único (v2)
 
-Consolidar e validar 100% a base teórica antes de avançar. Restaurar o Ciclo das Quintas original (visual/comportamento simples e intuitivo) e dividir os conceitos misturados no atual `HarmonyPanel` em **4 módulos independentes**, cada um com uma única responsabilidade.
+Toda importação (Cifra Club, PDF, DOCX, TXT, RTF, colar) passa pelo mesmo pipeline. Nenhuma tela nova.
 
-Nenhuma mudança em dicionário de acordes, piano, violão, áudio ou drawer harmônico nesta etapa — isso fica reservado para as Fases 5-6.
+## Regra fundamental — SourceModel vs ViewModel
 
-## Arquitetura dos módulos
+O sistema mantém **duas representações**:
 
-Cada módulo é um componente isolado em `src/components/harmony/`, consumindo o mesmo motor `src/lib/theory/` (já criado nas Fases 1-4). Recebe `currentKey` + `onSelectKey` e nada mais.
+- **SourceModel**: a música exatamente como importada (letra, acordes, ordem, blocos). Imutável após a importação. É o que fica salvo no banco.
+- **ViewModel**: derivada do SourceModel — reutilização de blocos, referências `↺`, escala de fonte, paginação A4. Recalculável a qualquer momento; nunca reescreve o SourceModel.
+
+Toda análise, classificação, otimização, reutilização e paginação vive na camada ViewModel.
+
+## Estrutura de arquivos
 
 ```text
-src/components/harmony/
-  CircleOfFifths.tsx      -> Ciclo das Quintas (Maior)      [restaurado]
-  CircleOfFifthsMinor.tsx -> Ciclo das Quintas (Menor)      [novo]
-  CircleOfFourths.tsx     -> Ciclo das Quartas              [novo]
-  ChromaticScale.tsx      -> Escala cromática 12 sons       [novo]
-  HarmonicField.tsx       -> Campo harmônico + escala + armadura  [extraído]
-  HarmonyTabs.tsx         -> Wrapper com abas (Quintas | Quartas | Cromática | Campo)
+src/lib/import/
+├── index.ts        // runImportPipeline() — orquestra
+├── parser.ts       // wrapper de parseCifra + extractText
+├── classifier.ts   // rótulos canônicos de bloco
+├── repetition.ts   // similaridade + structureId
+├── layout.ts       // motor de diagramação (medição + simulação)
+├── preview.ts      // gera ViewModel + score de qualidade
+├── types.ts        // SourceModel, ViewModel, Analysis, Score
+└── utils.ts        // normalização, hashing, medidas
 ```
 
-O `HarmonicCircle.tsx` atual passa a re-exportar o `HarmonyTabs` para preservar imports existentes no editor.
+## 1. Pipeline
 
-## Detalhamento por módulo
+```text
+extractText → parseCifra → classify → detectRepetitions →
+buildViewModel → runLayoutEngine → scoreQuality → Preview → confirm → save(SourceModel)
+```
 
-**1. Ciclo das Quintas (Maior) — restaurado**
-Layout circular simples da primeira versão: 12 tonalidades maiores no anel externo, relativas menores no anel interno. Sem anel de diminutos. Destaque do tom atual e das funções I/IV/V/vi ao redor. Clique em qualquer segmento define o tom.
+`runImportPipeline({ text, titleHint, artistHint }) → { source, view, analysis, score }`.
 
-**2. Ciclo das Quintas (Menor) — novo**
-Mesma estrutura visual, mas centrado na perspectiva menor: menores no anel externo (ordem de quintas Am → Em → Bm...), relativos maiores no interno.
+## 2. Classificação (`classifier.ts`)
 
-**3. Ciclo das Quartas — novo**
-Ordem inversa (C → F → B♭ → E♭...). Mesmo layout de dois anéis, para servir de espelho didático do Ciclo das Quintas.
+Vocabulário canônico: Intro, Verso, Primeira/Segunda/Terceira Parte, Pré-Refrão, Refrão, Ponte, Solo, Instrumental, Finalização, Vamp, Interlúdio.
 
-**4. Escala Cromática — novo**
-Faixa horizontal (não circular) com os 12 sons, mostrando ambas as grafias (♯ e ♭) para as notas alteradas: C, C♯/D♭, D, D♯/E♭, E, F, F♯/G♭, G, G♯/A♭, A, A♯/B♭, B. Todos clicáveis; o tom atual fica destacado.
+- Se a cifra já traz rótulo → normaliza (case/acentos/sinônimos: "Chorus"→Refrão, "Bridge"→Ponte...).
+- **Sem marcações** → heurística estrutural:
+  - blocos com letra e alta repetição posterior → candidato a Refrão;
+  - blocos com letra única e progressão linear → Verso;
+  - blocos só de acordes no início → Intro; no fim → Finalização;
+  - bloco curto entre refrões → Ponte;
+  - bloco só de acordes no meio → Solo/Instrumental.
 
-**5. Campo Harmônico — extraído do painel atual**
-Seção separada com: seletor de modo (Maior / Menor Natural / Harmônica / Melódica), notação (Auto/♯/♭), escala, armadura, relativo, 7 graus com números romanos e funções (Tônica, Supertônica, ..., Sensível). Já existe no motor `harmonicField()` — só é reorganizado para ficar sozinho.
+## 3. Repetição (`repetition.ts`) — features ampliadas
 
-## Wrapper com abas
+Cada bloco recebe um **fingerprint**:
+```ts
+{ chordSeq, chordSet, chordCount, lineCount, phraseCount,
+  estimatedMeasures, positionRatio, lyricNorm, lyricHash }
+```
 
-O `HarmonyTabs.tsx` usa `Tabs` do shadcn com 4 abas (Quintas / Quartas / Cromática / Campo). Cada aba renderiza um único módulo. Isso substitui a barra de botões atual (modo + notação + direção) que sobrecarrega visualmente o painel.
+Similaridade combinada:
+- `chordSeqSim` (LCS na sequência normalizada) — peso 0.35
+- `chordSetSim` (Jaccard) — peso 0.10
+- `lyricSim` (levenshtein normalizado) — peso 0.30
+- `shapeSim` (proximidade de measures/lines/phrases) — peso 0.15
+- `positionSim` (mesmo papel estrutural) — peso 0.10
 
-Modo e notação passam a viver **dentro** do módulo Campo Harmônico (onde realmente fazem sentido), não como controles globais.
+Regras:
+- `≥ 0.95` letra+acordes iguais → repetição automática.
+- `0.85–0.94` → sugestão pendente no Preview (card [Sim]/[Não]).
+- **Mesmos acordes, letra diferente** (chordSeqSim ≥ 0.95, lyricSim < 0.6) → marca como *variação estrutural* do mesmo `structureId` (ex.: Verso 1 / Verso 2 com mesma progressão), sem colapsar automaticamente.
+- `< 0.85` → bloco independente.
 
-## Validação teórica
+## 4. StructureId
 
-Adicionar `src/lib/theory/__tests__/theory.test.ts` cobrindo:
+Cada bloco no ViewModel recebe `structureId` canônico (`chorus-1`, `verse-1`, `verse-2`, `bridge-1`, ...).
+Referências apontam para `structureId`, não índice — sobrevive a reordenações.
 
-- Escala cromática: 12 sons, com grafias ♯ e ♭
-- Escalas Maior, Menor Natural, Harmônica, Melódica em C, G, F, F♯, G♭, B, A♭ (sem misturar acidentes)
-- Campos harmônicos: qualidade de cada tríade em maior (I ii iii IV V vi vii°), menor natural (i ii° III iv v VI VII), harmônica (i ii° III+ iv V VI vii°), melódica (i ii III+ IV V vi° vii°)
-- Armaduras de clave: 0 a 7 ♯/♭ em maior e relativas menores
-- Todas 17 tonalidades clicáveis: C, C♯, D♭, D, D♯, E♭, E, F, F♯, G♭, G, G♯, A♭, A, A♯, B♭, B
+```ts
+type ViewBlock =
+  | { kind: "content"; sourceIndex: number; structureId: string; type; ... }
+  | { kind: "ref";     structureId: string; label: "↺ Voltar ao Refrão" | ... };
+```
 
-Rodar com `bunx vitest run` para confirmar aprovação total antes de fechar a etapa.
+`sourceIndex` liga de volta ao SourceModel; edições sempre voltam à fonte.
 
-## Ordem de execução
+## 5. Layout Engine (`layout.ts`) — motor de diagramação
 
-1. Criar `src/components/harmony/CircleOfFifths.tsx` (restaurar layout original de 2 anéis).
-2. Criar `CircleOfFifthsMinor.tsx`, `CircleOfFourths.tsx`, `ChromaticScale.tsx`, `HarmonicField.tsx`.
-3. Criar `HarmonyTabs.tsx` (wrapper com 4 abas).
-4. Reescrever `src/components/HarmonicCircle.tsx` como reexport de `HarmonyTabs` (mantém `HarmonyPanel` e `HarmonicCircle` como aliases).
-5. Adicionar testes `src/lib/theory/__tests__/theory.test.ts` e rodar.
-6. Corrigir qualquer divergência encontrada no motor.
+Não é "mede e quebra". É **medir → simular → escolher**:
 
-## Fora de escopo (Fases 5-6, adiadas)
+1. **Medir** cada elemento em px para cada nível de escala (fonte, padding, spacing) usando as escalas discretas de preferências.
+2. **Estado do layout** por candidato:
+   - `availableWidth`, `availableHeight`,
+   - `compactionFactor` (0..1),
+   - `visualDensity` (chips/cm²),
+   - `maxLinesPerBlock`,
+   - `breakCost` (penaliza quebra de bloco, órfão de título, chip cortado — cortar chip = ∞).
+3. **Simular candidatos** na ordem:
+   a) tudo com refs em 1 página, escala nominal;
+   b) idem, compactação vertical;
+   c) idem, compactação horizontal + reflow chord layout;
+   d) idem, fonte -1 nível;
+   e) 2 páginas com quebra de menor `breakCost`.
+4. Escolher o **menor custo** que satisfaça restrições invioláveis:
+   - chip nunca cortado/abreviado,
+   - linha de acordes + letra é unidade,
+   - bloco (título+conteúdo+obs) é unidade,
+   - título nunca órfão.
+5. Só então **renderizar**.
 
-Dicionário de acordes, diagramas de piano/violão, áudio, drawer harmônico ao clicar em acorde da música, progressões sugeridas. Nada disso será tocado agora.
+Saída: `PagedLayout = { pages: RenderedBlock[][], scale, spacing, cost }`.
 
-Confirma que posso implementar exatamente assim?
+## 6. Smart Chord Layout com padrões
+
+Distribuidor gera candidatos de arranjo (1×6, 2×3, 3×2, 6×1, com preferência por múltiplos naturais 2/4/8), pontua por:
+- equilíbrio (variância de largura entre linhas),
+- aproveitamento horizontal,
+- proximidade a "compasso natural" (4).
+
+Escolhe o mais equilibrado que caiba na `availableWidth` corrente do Layout Engine.
+
+## 7. Score de qualidade (`preview.ts`)
+
+```ts
+Score = {
+  overall: 0..100,
+  checks: [
+    { label: "Estrutura reconhecida", ok, weight },
+    { label: "Refrões encontrados", ok },
+    { label: "Blocos reutilizados", ok, detail: "Refrão ×3" },
+    { label: "Layout otimizado", ok },
+    { label: "Cabe em A4", ok },
+  ],
+  savingsPct: number,
+}
+```
+
+Renderizado no card "🧠 Estrutura reconhecida" acima do Preview, com o resumo dos blocos e reutilizações.
+
+## 8. Metadados derivados (para futuro)
+
+Calculados na análise e persistidos no SourceModel (readonly):
+```ts
+derived: {
+  estimatedDuration, estimatedTempo,
+  averageChordDensity, difficulty: "easy"|"med"|"hard",
+  uniqueBlocks, repeatedBlocks
+}
+```
+Não usados em UI agora, mas ficam prontos para biblioteca/repertório/ensaios.
+
+## 9. Modelo de dados
+
+`song-store` (extensão):
+```ts
+type Song = {
+  ...campos atuais,
+  source: SourceBlock[],        // imutável
+  view?: ViewModel,             // regenerável, cache
+  derived?: DerivedMetadata,
+}
+```
+Migração: songs existentes → `source = blocks atuais`, `view` recomputado no primeiro carregamento.
+
+## 10. UI da importação (`src/routes/novo.tsx`)
+
+Após pipeline:
+- Card **Qualidade da importação** com Score + checks.
+- Preview com o ViewModel (refs `↺` clicáveis, rolam até o alvo).
+- Cards de sugestão 85–94% → [Sim] reutiliza / [Não] mantém.
+- Botão **Confirmar e salvar** grava o SourceModel; **Ajustar** entra no editor.
+
+## 11. PDF / impressão
+
+`editor.$id.tsx` usa o mesmo `PagedLayout` — WYSIWYG entre tela e papel.
+
+## Fora de escopo
+
+- SourceModel nunca é reescrito por otimizações. Toda mudança visual vive no ViewModel.
+- Fases 5/6 do Harmony Engine seguem pausadas.
+- Sem novas migrations obrigatórias; `source`/`derived` cabem no JSON já persistido.
