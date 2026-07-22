@@ -60,7 +60,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
 
   showPageNumber: false,
   showDate: false,
-  footerText: "Gerado por MapaLouvor",
+  footerText: "Gerado por Mapas de Acordes_IBVP",
 
   chordColors: { ...DEFAULT_CHORD_COLORS },
   chordViewMode: "smart",

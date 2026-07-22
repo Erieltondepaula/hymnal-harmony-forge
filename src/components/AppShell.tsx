@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Music2 className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-[15px] font-semibold leading-tight">MapaLouvor</div>
+            <div className="text-[15px] font-semibold leading-tight">Mapas de Acordes_IBVP</div>
             <div className="text-xs text-muted-foreground">Mapas musicais</div>
           </div>
         </div>

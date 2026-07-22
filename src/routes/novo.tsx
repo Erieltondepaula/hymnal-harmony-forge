@@ -73,7 +73,7 @@ function toPreviewSong(parsed: ParsedCifraSong, id = "preview-novo"): Song {
 }
 
 const defaultPreviewSong = toPreviewSong(
-  parseCifraLocally(samplePreview, { titleHint: "Pré-visualização", artistHint: "MapaLouvor" }),
+  parseCifraLocally(samplePreview, { titleHint: "Pré-visualização", artistHint: "Mapas de Acordes_IBVP" }),
   "preview-default",
 );
 
