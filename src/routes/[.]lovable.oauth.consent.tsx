@@ -94,7 +94,7 @@ function Consent() {
           </div>
         </div>
         <p className="mt-4 text-sm text-muted-foreground">
-          {clientName} poderá acessar seus mapas musicais no MapaLouvor em seu nome, usando as ferramentas MCP
+          {clientName} poderá acessar seus mapas musicais no Mapas de Acordes_IBVP em seu nome, usando as ferramentas MCP
           (listar, ler, criar e apagar músicas).
         </p>
         {error && (

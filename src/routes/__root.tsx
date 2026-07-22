@@ -78,14 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "MapaLouvor — Mapas musicais inteligentes para ministérios" },
+      { title: "Mapas de Acordes_IBVP — Mapas musicais inteligentes para ministérios" },
       {
         name: "description",
         content:
           "Transforme cifras em mapas musicais compactos e profissionais para o culto. Rápido, elegante e feito para músicos.",
       },
-      { name: "author", content: "MapaLouvor" },
-      { property: "og:title", content: "MapaLouvor — Mapas musicais inteligentes para ministérios" },
+      { name: "author", content: "Mapas de Acordes_IBVP" },
+      { property: "og:title", content: "Mapas de Acordes_IBVP — Mapas musicais inteligentes para ministérios" },
       {
         property: "og:description",
         content:
@@ -93,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "MapaLouvor — Mapas musicais inteligentes para ministérios" },
+      { name: "twitter:title", content: "Mapas de Acordes_IBVP — Mapas musicais inteligentes para ministérios" },
       { name: "twitter:description", content: "Transforme cifras em mapas musicais compactos e profissionais para o culto. Rápido, elegante e feito para músicos." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6d23d5f7-3554-4141-9f83-d22fa29d3381/id-preview-b13a19cf--da9b57d8-10ff-4ece-ab30-641edc091bfb.lovable.app-1783511034064.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6d23d5f7-3554-4141-9f83-d22fa29d3381/id-preview-b13a19cf--da9b57d8-10ff-4ece-ab30-641edc091bfb.lovable.app-1783511034064.png" },

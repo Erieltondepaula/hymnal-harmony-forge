@@ -13,8 +13,8 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
-      { title: "Entrar — MapaLouvor" },
-      { name: "description", content: "Acesse sua conta MapaLouvor e continue seus mapas musicais." },
+      { title: "Entrar — Mapas de Acordes_IBVP" },
+      { name: "description", content: "Acesse sua conta Mapas de Acordes_IBVP e continue seus mapas musicais." },
     ],
   }),
 });
@@ -88,7 +88,7 @@ function AuthPage() {
             <Music2 className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-base font-semibold">MapaLouvor</div>
+            <div className="text-base font-semibold">Mapas de Acordes_IBVP</div>
             <div className="text-xs text-muted-foreground">Mapas musicais</div>
           </div>
         </div>

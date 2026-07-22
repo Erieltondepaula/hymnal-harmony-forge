@@ -189,7 +189,7 @@ function ConfigPage() {
             <input
               value={prefs.footerText}
               onChange={(e) => set("footerText", e.target.value)}
-              placeholder="Ex.: Gerado por MapaLouvor"
+              placeholder="Ex.: Gerado por Mapas de Acordes_IBVP"
               className="input"
             />
           </Field>
